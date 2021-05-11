@@ -31,3 +31,61 @@ msd_period <- function(type = "OU_IM", period = NULL){
    return(pd)
    
 }
+
+
+
+#' Query DATIM
+#'
+#' @param ou_uid uid for the country
+#' @param org_lvl org hierarchy level, eg site level for Saturn = 6, recommend glamr::get_outable()
+#' @param type API type - HTS (HTS_TST), TX (TX_CURR), LAB (LAB_PTCQI)
+#' @param username DATIM username, recommend using glamr::load_secrets()
+#' @param password DATIM password, recommend using glamr::load_secrets()
+#' @param baseurl default = https://final.datim.org/
+#'
+#' @return API pull data frame from DATIM
+#' @export
+
+query_datim <- function(ou_uid, org_lvl, type, username, password, baseurl = "https://final.datim.org/"){
+  
+  print(paste("running ", ou_uid, " ... ", type, " ... ", Sys.time()))
+  
+  core_url <-
+    paste0(baseurl,"api/29/analytics?",
+           "dimension=ou:LEVEL-", org_lvl, ";", ou_uid, "&", #level and ou
+           "dimension=bw8KHXzxd9i:NLV6dy7BE2O&" #Funding Agency -> USAID
+    )
+  
+  if(type == "TX"){
+    type_url <- 
+      paste0("dimension=pe:",datim_cy,"Oct&", #period
+             "dimension=IeMmjHyBUpi:Jh0jDM5yQ2E&", #Targets/Results - Results W8imnja2Owd,Jh0jDM5yQ2E
+             "dimension=LxhLO68FcXm:MvszPTQrUhy&", #technical area, TX_CURR
+             "filter=RUkVjD3BsS1:PE5QVF0w4xj&" #Top Level  - Numerator
+      )
+  } else if (type == "HTS"){
+    type_url <- 
+      paste0("dimension=pe:",datim_cy,"Oct&", #period
+             "dimension=IeMmjHyBUpi:Jh0jDM5yQ2E&", #Targets/Results - Results W8imnja2Owd,Jh0jDM5yQ2E
+             "dimension=LxhLO68FcXm:f5IPTM7mieH;wdoUps1qb3V;BTIqHnjeG7l;rI3JlpiuwEK;CUblPgOMGaT&", #technical area,  HTS_TST, HTS_INDEX, PMTCT_STAT, TB_STAT, VMMC_CIRC
+             "filter=ra9ZqrTtSQn&", #HTS Modality (USE ONLY for FY20,21 Results/FY21,22 Targets)
+             "filter=bDWsPYyXgWP:awSDzziN3Dn;EvyNJHbQ7ZE;mSBg9AZx1lV;viYXyEy7wKi&") #HIV Test Status (Specific)) - Pos/Neg + New Pos/Neg
+    
+  } else if(type == "LAB"){
+    type_url <- 
+      paste0("dimension=pe:", datim_cy, "Q3&", #period
+             "dimension=IeMmjHyBUpi:Jh0jDM5yQ2E&", #Targets/Results - Results W8imnja2Owd,Jh0jDM5yQ2E
+             "dimension=LxhLO68FcXm:scxfIjoA6nt&", #technical area, LAB_PTCQI
+             "dimension=HWPJnUTMjEq:T7Z0TtiWqyu;SG4w1HBS23B;MC7Q6BN0Xw9;hfaBo0nrQok;oBbMk5GjX4a;PJEPs8sHAk5&" #Disaggregation Type = Lab/CQI, Lab/PT, Lab/TestVolume, POCT/CQI, POCT/PT, POCT/TestVolume"
+      )
+    
+  } 
+  
+  end_url <- "displayProperty=SHORTNAME&skipMeta=false&hierarchyMeta=true"
+  
+  full_url <- paste0(core_url, type_url, end_url)
+  
+  df <- get_datim_targets(full_url, username, password)
+  
+  return(df)
+}
