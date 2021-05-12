@@ -23,12 +23,12 @@
   library(rnaturalearth)
   library(gisr)
 
+  source("Scripts/99_utilities.R")
+
 # GLOBAL VARIABLES --------------------------------------------------------
   
-  source("Scripts/99_utilities.R")
-  
   msd_source <- msd_period()
-  authors <- "Aaron Chafetz"
+  authors <- c("Aaron Chafetz")
 
 # IMPORT ------------------------------------------------------------------
   

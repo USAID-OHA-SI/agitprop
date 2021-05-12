@@ -21,6 +21,7 @@
   library(glue)
   library(Wavelength)
   
+  source("Scripts/99_utilities.R")
 
 # GLOBAL VARIABLES --------------------------------------------------------
   
@@ -30,10 +31,7 @@
   
   curr_fy <- 2021
   datim_cy <- curr_fy - 1 
-  
-  
-  source("Scripts/99_utilities.R")
-  
+
 
 # PULL DATA ---------------------------------------------------------------
   
