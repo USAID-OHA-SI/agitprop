@@ -178,11 +178,11 @@
     labs(x = NULL, y = NULL,
          title = toupper("Estimated ART coverage in USAID supported treament 'districts'"),
          subtitle = glue("USAID 'districts' <span style='color:{moody_blue}'>below estimated saturation</span> and those with the <span style='color:{scooter}'>largest share of PLHIV</span>"),
-         caption = glue("Estimated ART Coverage = FY21 TX_CURR_SUBNAT / FY21 PLHIV
-         High PLHIV Burden OUs = Total PLHIV ({{curr_fy}}) in USAID districts is greater than 500,000
+         caption = glue("Estimated ART Coverage = FY{str_sub(curr_fy, 3,4)} TX_CURR_SUBNAT / PLHIV
+         High PLHIV Burden OUs = Total PLHIV ({curr_fy}) in USAID districts is greater than 500,000
          DRC removed with no PLHIV estimates;Regional programs also removed
          KP only districts (+90% of the TX_CURR results were in the KP disagg) were excluded
-         Source: {{msd_source}} + NAT_SUBNAT
+         Source: {msd_source} + NAT_SUBNAT
          SI analytics: {paste(authors, collapse = '/')}
          US Agency for International Development")) +
     si_style_nolines() +
