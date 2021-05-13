@@ -3,7 +3,7 @@
 # PURPOSE:  site count of USAID supported facilities
 # LICENSE:  MIT
 # DATE:     2021-05-11
-# UPDATED: 
+# UPDATED:  2021-05-13
 # NOTE:     adapted from USAID-OHA-SI/findyourbeach (linked below)
 # URL:      https://github.com/USAID-OHA-SI/find_your_beach/blob/master/Scripts/01_query_datim.R
 
@@ -103,10 +103,17 @@
     mutate(has_coordinates = !is.na(latitude))
   
   #store API dataset
-  write_csv(df_sites, "Dataout/02_USAID_sites_SBU.csv", na = "")
+  outputfile <- "Dataout/02_USAID_sites_SBU.csv"
+  write_csv(df_sites, outputfile, na = "")
+  
+
+# PREP FOR VIZ ------------------------------------------------------------
+  
+  #read in API file (so you can start here instead of reruning full API)
+  df_sites <- read_csv(outputfile)
   
   #date of API
-  api_date <- "Dataout/02_USAID_sites_SBU.csv" %>% 
+  api_date <- outputfile %>% 
     file.info() %>% 
     pull(ctime) %>% 
     format("%Y-%m-%d")
@@ -129,7 +136,9 @@
                                    indicator == "TX_CURR" ~ "Providing antiretrovial treatment",
                                    indicator == "LAB_PTCQI" ~ "Laboratory-based and/or point-of-care testing"))
 
-  
+
+# VIZ ---------------------------------------------------------------------
+
   df_viz %>% 
     ggplot(aes(x, y)) +
     geom_text(aes(label = comma(distinct_facilities)),
