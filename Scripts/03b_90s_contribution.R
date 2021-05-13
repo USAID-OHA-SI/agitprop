@@ -42,7 +42,10 @@ source("Scripts/99_utilities.R")
   df_agg <- df %>% 
     filter(fundingagency == "USAID",
            indicator %in% c("HTS_TST", "HTS_TST_POS", "TX_CURR", "TX_PVLS"),
-           standardizeddisaggregate == "Total Numerator") %>% 
+           standardizeddisaggregate %in% c("Total Numerator", "Age/Sex/ARVDispense/HIVStatus"),
+           otherdisaggregate %in% c(NA, "ARV Dispensing Quantity - 3 to 5 months",
+                                    "ARV Dispensing Quantity - 6 or more months")) %>% 
+    mutate(indicator = ifelse(standardizeddisaggregate == "Age/Sex/ARVDispense/HIVStatus", "TX_MMDo3", indicator)) %>% 
     group_by(fundingagency, fiscal_year, indicator) %>% 
     summarise(across(starts_with("qtr"), sum, na.rm = TRUE)) %>% 
     ungroup() %>% 
@@ -78,8 +81,10 @@ source("Scripts/99_utilities.R")
 
   #reshape
   df_agg <- df_agg %>% 
-    mutate(type = ifelse(indicator == "HTS_TST_POS", "pos", "value"),
-           indicator = ifelse(indicator == "HTS_TST_POS", "HTS_TST", indicator)) %>%
+    mutate(type = ifelse(indicator %in% c("HTS_TST_POS", "TX_MMDo3"), "extra", "value"),
+           indicator = case_when(indicator == "HTS_TST_POS" ~ "HTS_TST", 
+                                 indicator == "TX_MMDo3" ~ "TX_CURR",
+                                 TRUE ~ indicator)) %>%
     select(-value, -cy_cumulative) %>% 
     spread(type, round)
     
@@ -99,10 +104,11 @@ source("Scripts/99_utilities.R")
            y = .5,
            text = case_when(indicator == "HTS_TST" ~ 
                               glue("{pd_text} {curr_cy}, USAID administered <span style='color:{old_rose}'>**{value} million** HIV tests</span>,<br> 
-                                   helping <span style='color:{old_rose}'>**{pos} million people**</span> to learn their <span style='color:{old_rose}'>HIV-positive</span> status."),
+                                   helping <span style='color:{old_rose}'>**{extra} million people**</span> to learn their <span style='color:{old_rose}'>HIV-positive</span> status."),
                             indicator == "TX_CURR" ~
                               glue("Around the world, USAID currently supports life-saving<br>
-                                   <span style='color:{old_rose}'>HIV treatment</span> for <span style='color:{old_rose}'>**{value} people**</span>."),
+                                   <span style='color:{old_rose}'>HIV treatment</span> for <span style='color:{old_rose}'>**{value} million people**</span>, of which <span style='color:{old_rose}'>**{extra} million<br>
+                                    people**</span> are receiving <span style='color:{old_rose}'>multi-month drug dispensing</span>."),
                             indicator == "TX_PVLS" ~
                               glue("And of these, <span style='color:{old_rose}'>**{value} million**</span> are <span style='color:{old_rose}'>virally suppressed</span> ensuring<br>
                                    better health and reduced onward transmission of HIV.")))
