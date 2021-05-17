@@ -32,7 +32,23 @@ msd_period <- function(type = "OU_IM", period = NULL){
    
 }
 
-
+#' Clean Number
+#'
+#' @param x number vector
+#' @param digits number of digits to round to (default = 0)
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#'  clean_number(1500, 1)
+#'  df %>% mutate(value_label = clean_number(value)) }
+clean_number <- function(x, digits = 0){
+  dplyr::case_when(x >= 1000000 ~ glue("{round(x/1000000, digits)}m"),
+                   x >= 1000 ~ glue("{round(x/1000, digits)}k"),
+                   TRUE ~ glue("{x}"))
+}
 
 #' Query DATIM
 #'
