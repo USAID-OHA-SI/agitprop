@@ -39,7 +39,7 @@ vignettes/*.pdf
 .Renviron
 
 #no data
-*.csv
+#*.csv
 *.txt
 *.rds
 *.xlsx
@@ -54,3 +54,4 @@ AI/*
 GIS/*
 Images/*
 Graphics/*
+Dataout/*

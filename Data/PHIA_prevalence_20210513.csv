@@ -1,0 +1,12 @@
+Indicator,Indicator_Type,Subindicator,Gender,Maless_VS_FeMalesss,Age_Range,Country,Survey,Year,Stratification_Category,Stratification,Value,Denominator,Standard_Deviation,Confidence_Lower,Confidence_Upper
+"HIV Prevalence","","","Total","","15-49 years","Cameroon","CAMPHIA",2016,"No stratification","","3.57",9641,0.21,3.14,4
+"HIV Prevalence","","","Total","","15-49 years","Eswatini","SHIMS 2",2016,"No stratification","","27.25",8533,0.7,25.79,28.7
+"HIV Prevalence","","","Total","","15-49 years","Ethiopia","EPHIA",2017,"No stratification","","2.87",17226,0.2,2.46,3.29
+"HIV Prevalence","","","Total","","15-49 years","Lesotho","LePHIA",2016,"No stratification","","24.33",10189,0.44,23.42,25.23
+"HIV Prevalence","","","Total","","15-49 years","Malawi","MPHIA",2015,"No stratification","","10.01",15255,0.32,9.35,10.67
+"HIV Prevalence","","","Total","","15-49 years","Namibia","NAMPHIA",2016,"No stratification","","11.51",14467,0.42,10.66,12.37
+"HIV Prevalence","","","Total","","15-49 years","Rwanda","RPHIA",2018,"No stratification","","2.58",26826,0.16,2.25,2.9
+"HIV Prevalence","","","Total","","15-49 years","Tanzania","THIS",2016,"No stratification","","4.66",25600,0.17,4.3,5.02
+"HIV Prevalence","","","Total","","15-49 years","Uganda","UPHIA",2016,"No stratification","","5.96",25570,0.21,5.52,6.4
+"HIV Prevalence","","","Total","","15-49 years","Zambia","ZAMPHIA",2016,"No stratification","","11.35",17368,0.32,10.7,12
+"HIV Prevalence","","","Total","","15-49 years","Zimbabwe","ZIMPHIA",2015,"No stratification","","13.37",17462,0.33,12.69,14.06
