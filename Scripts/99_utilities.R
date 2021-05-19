@@ -50,6 +50,34 @@ clean_number <- function(x, digits = 0){
                    TRUE ~ glue("{x}"))
 }
 
+
+#' Calculate Achievement
+#'
+#' @param df MSD data frame
+#' @param curr_qtr current quarter, using ICPIutilities::identifypd(df, "quarter"), default = 4
+#' @param add_color add OHA achievement colors, default = TRUE
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' qtr <- ICPIutilities::identifypd(df, "quarter")
+#' df <- calc_achv(df, qtr)}
+calc_achv <- function(df, curr_qtr = 4, add_color = TRUE){
+  df_achv <- df %>% 
+    mutate(achievement = cumulative/targets,
+           qtr_goal = ifelse(indicator == "TX_CURR", 1, 1*(curr_qtr/4)),
+           achv_color = case_when(is.na(achievement) ~ NA_character_,
+                                  achievement <= qtr_goal-.25 ~ old_rose_light,
+                                  achievement <= qtr_goal-.1 ~ burnt_sienna_light,
+                                  achievement <= qtr_goal+.1 ~ "#5BB5D5",
+                                  TRUE ~ trolley_grey_light)) %>% 
+    select(-qtr_goal)
+  
+  return(df_achv)
+}
+
 #' Query DATIM
 #'
 #' @param ou_uid uid for the country
