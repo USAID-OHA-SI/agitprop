@@ -35,8 +35,53 @@
   df_arch <- si_path() %>% 
     return_latest("OU_IM_FY15") %>% 
     read_msd()
+
+# OVC_SERV OVERALL --------------------------------------------------------
   
   
+  df_kpi <- df %>% 
+    filter(indicator == "OVC_SERV",
+           standardizeddisaggregate == "Total Numerator",
+           fundingagency == "USAID") %>% 
+    filter(cumulative > 0) %>% 
+    group_by(fiscal_year, indicator) %>% 
+    summarise(cumulative = sum(cumulative, na.rm = TRUE)) %>% 
+    ungroup() %>% 
+    filter(fiscal_year == max(fiscal_year))
+  
+  
+  df_viz <- df_kpi %>% 
+    mutate(x = .5,
+           y = x,
+           x_label = .5,
+           y_label = .75,
+           x_sub = .72,
+           y_sub = .3,
+           ind_display = "Beneficiaries of Orphan and Vulnerable Children affected by HIV")
+  
+  v1 <- df_viz %>% 
+    ggplot(aes(x, y)) +
+    geom_text(aes(label = clean_number(cumulative, 2)),
+              family = "Source Sans Pro Light", color = scooter,
+              size = 60/.pt) +
+    geom_text(aes(x_label, y_label, label = ind_display),
+              family = "Source Sans Pro Light", color = trolley_grey, 
+              size = 11/.pt) +
+    geom_text(aes(x_sub, y_sub, label = df_kpi$fiscal_year),
+              family = "Source Sans Pro Light", color = trolley_grey, 
+              size = 11/.pt) +
+    expand_limits(x = c(0, 1), y = c(0,1)) +
+    facet_grid(~indicator) +
+    labs(x = NULL, y = NULL) +
+    si_style_nolines() +
+    theme(axis.text.x = element_blank(),
+          axis.text.y = element_blank(),
+          strip.text = element_blank(),
+          panel.background = element_rect(fill = "#e6e7e84f"),
+          panel.border = element_rect(color = trolley_grey, fill = NA))  
+
+# HIV STATUS BREAKDOWN ----------------------------------------------------
+
   df_hivstat <- df %>% 
     filter(indicator == "OVC_HIVSTAT",
            standardizeddisaggregate == "ReportedStatus",
@@ -76,8 +121,9 @@
     si_style_void() +
     theme(legend.position = "none")
   
-  
-  
+
+# TRENDS IN KNOWN STATUS PROXY --------------------------------------------
+
   df_knowstatus <- df %>% 
     bind_rows(df_arch) %>% 
     filter((indicator == "OVC_SERV_UNDER_18" & standardizeddisaggregate =="Total Numerator") |
@@ -111,49 +157,11 @@
     si_style_nolines() +
     theme(axis.text.y = element_blank())
   
-  
-  df_kpi <- df %>% 
-    filter(indicator == "OVC_SERV",
-           standardizeddisaggregate == "Total Numerator",
-           fundingagency == "USAID") %>% 
-    filter(cumulative > 0) %>% 
-    group_by(fiscal_year, indicator) %>% 
-    summarise(cumulative = sum(cumulative, na.rm = TRUE)) %>% 
-    ungroup() %>% 
-    filter(fiscal_year == max(fiscal_year))
-  
-    
-  df_viz <- df_kpi %>% 
-    mutate(x = .5,
-           y = x,
-           x_label = .5,
-           y_label = .75,
-           x_sub = .72,
-           y_sub = .3,
-           ind_display = "Beneficiaries of Orphan and Vulnerable Children affected by HIV")
 
-  v1 <- df_viz %>% 
-    ggplot(aes(x, y)) +
-    geom_text(aes(label = clean_number(cumulative, 2)),
-              family = "Source Sans Pro Light", color = scooter,
-              size = 60/.pt) +
-    geom_text(aes(x_label, y_label, label = ind_display),
-              family = "Source Sans Pro Light", color = trolley_grey, 
-              size = 11/.pt) +
-    geom_text(aes(x_sub, y_sub, label = df_kpi$fiscal_year),
-              family = "Source Sans Pro Light", color = trolley_grey, 
-              size = 11/.pt) +
-    expand_limits(x = c(0, 1), y = c(0,1)) +
-    facet_grid(~indicator) +
-    labs(x = NULL, y = NULL) +
-    si_style_nolines() +
-    theme(axis.text.x = element_blank(),
-          axis.text.y = element_blank(),
-          strip.text = element_blank(),
-          panel.background = element_rect(fill = "#e6e7e84f"),
-          panel.border = element_rect(color = trolley_grey, fill = NA))
-  
-  
+
+
+# COMBINE PLOTS -----------------------------------------------------------
+
   v_right <- (v2/v3) +
     plot_layout(heights = c(2, 1))
 
