@@ -22,7 +22,7 @@
 
 # GLOBAL VARIABLES --------------------------------------------------------
   
-  authors <- c("Aaron Chafetz")
+  authors <- c("Aaron Chafetz & Tim Essam")
   
 # IMPORT ------------------------------------------------------------------
   
@@ -116,6 +116,7 @@
     geom_vline(xintercept = pd_breaks, color = "white", 
                size = .9, linetype = "dotted") +
     geom_point(shape = 21, fill = "white", color = scooter, stroke = 1.5, na.rm = TRUE) +
+    annotate(geom = "text", x = 7, y = 1.e5, label = "DRAFT", size = 72, color = trolley_grey_light) +
     scale_y_continuous(label = clean_number, position = "right") +
     scale_x_discrete(breaks = pd_breaks, labels = str_remove(pd_breaks, "Q1")) +
     labs(x = NULL, y = NULL, 
@@ -131,4 +132,7 @@
     si_style_ygrid()
     
   si_save("Images/09_prep_scaleup.png")  
+  
+  si_save("Graphics/09_prep_scaleup.svg", scale = 1.2, 
+          width = 10, height = 7)  
   
