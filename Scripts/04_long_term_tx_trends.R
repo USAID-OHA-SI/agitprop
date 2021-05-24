@@ -3,7 +3,7 @@
 # PURPOSE:  treatment scale up since PEPFAR start
 # LICENSE:  MIT
 # DATE:     2021-05-14
-# UPDATED: 
+# UPDATED:  2021-05-24
 
 # DEPENDENCIES ------------------------------------------------------------
   
@@ -24,7 +24,7 @@
 
 # GLOBAL VARIABLES --------------------------------------------------------
   
-  authors <- c("Aaron Chafetz")
+  authors <- c("Aaron Chafetz & Tim Essam")
   
   msd_source <- msd_period()
 
@@ -40,8 +40,8 @@
   
   #Current MSD
   df <- si_path() %>% 
-    return_latest("OU_IM") %>% 
-    read_rds()
+    return_latest("OU_IM_FY19") %>% 
+    read_msd()
   
   #Archived MSD
   df_arch <- si_path() %>% 
@@ -129,5 +129,7 @@
                      US Agency for International Development")) +
     si_style_nolines()
 
-  si_save("Images/04_tx_trends.png")   
+  si_save("Images/04_tx_trends.png")
+  
+  ggsave("Graphics/04_tx_trends.svg", scale = 1.2, width = 10, height = 7)
   
