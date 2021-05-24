@@ -25,12 +25,10 @@
 
 # GLOBAL VARIABLES --------------------------------------------------------
 
-  authors <- c("Aaron Chafetz")
+  authors <- c("Aaron Chafetz", "Tim Essam")
 
   saturation <- .95*.95
 
-  msd_source <- msd_period()
-  
 
 # IMPORT ------------------------------------------------------------------
   
@@ -43,6 +41,11 @@
     read_rds()  
   
 # MUNGE -------------------------------------------------------------------
+  
+  #source info
+  msd_source <- df_ou %>% 
+    identifypd() %>% 
+    msd_period(period = .)
   
   #curr fy
     curr_fy <- identifypd(df, "year")

@@ -22,7 +22,8 @@
 
 # GLOBAL VARIABLES --------------------------------------------------------
   
-  authors <- c("Aaron Chafetz")
+  authors <- c("Aaron Chafetz", "Tim Essam"
+               )
   dodge <- position_dodge(width=0.5)
 
   date_pulled <- return_latest("Data", "PHIA_90s") %>% 

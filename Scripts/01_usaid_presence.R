@@ -29,14 +29,13 @@
 
 # GLOBAL VARIABLES --------------------------------------------------------
   
-  msd_source <- msd_period()
-  authors <- c("Aaron Chafetz")
+  authors <- c("Aaron Chafetz", "Tim Essam")
 
 # IMPORT ------------------------------------------------------------------
   
   #MSD
     df_ou <- si_path() %>% 
-      return_latest("OU_IM") %>% 
+      return_latest("OU_IM_FY19") %>% 
       read_msd()   
   
   #shapefile
@@ -50,6 +49,11 @@
 
 # MUNGE -------------------------------------------------------------------
 
+  #source info
+    msd_source <- df_ou %>% 
+      identifypd() %>% 
+      msd_period(period = .)
+    
   #current FY
     curr_fy <- identifypd(df_ou, "year")
     
@@ -113,7 +117,6 @@ tbl <-  spdf_ou %>% st_drop_geometry() %>% count(continent, name) %>%
                                                                              )
                                   )
 
-  library(patchwork)
   map / cntry_tbl
   
   ggsave("Images/01_usaid_presence_text.svg", plot = cntry_tbl, scale = 1.2, width = 10, height = 7)

@@ -27,7 +27,7 @@
   
   load_secrets()
 
-  authors <- c("Aaron Chafetz")
+  authors <- c("Aaron Chafetz", "Tim Essam")
   
   curr_fy <- 2021
   datim_cy <- curr_fy - 1 

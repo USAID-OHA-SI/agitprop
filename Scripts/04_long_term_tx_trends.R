@@ -24,9 +24,8 @@
 
 # GLOBAL VARIABLES --------------------------------------------------------
   
-  authors <- c("Aaron Chafetz & Tim Essam")
+  authors <- c("Aaron Chafetz", "Tim Essam")
   
-  msd_source <- msd_period()
 
 # IMPORT ------------------------------------------------------------------
   
@@ -50,6 +49,11 @@
 
 # MUNGE -------------------------------------------------------------------
 
+  #source info
+  msd_source <- df %>% 
+    identifypd() %>% 
+    msd_period(period = .)
+  
   df_tx <- df %>% 
     bind_rows(df_arch) %>% 
     filter(indicator %in% c("TX_CURR", "TX_NEW"),

@@ -22,7 +22,7 @@
 
 # GLOBAL VARIABLES --------------------------------------------------------
   
-  authors <- c("Aaron Chafetz & Tim Essam")
+  authors <- c("Aaron Chafetz", "Tim Essam")
   
 # IMPORT ------------------------------------------------------------------
   

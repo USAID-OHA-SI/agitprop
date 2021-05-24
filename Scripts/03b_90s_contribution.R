@@ -23,7 +23,7 @@ source("Scripts/99_utilities.R")
 
 # GLOBAL VARIABLES --------------------------------------------------------
   
-  authors <- c("Aaron Chafetz")
+  authors <- c("Aaron Chafetz", "Tim Essam")
 
 # IMPORT ------------------------------------------------------------------
   

@@ -25,7 +25,7 @@
   
   ind_sel <- c("PrEP_NEW", "VMMC_CIRC", "HTS_TST", "HTS_TST_POS", "TX_NEW", "TX_CURR")
 
-  authors <- c("Aaron Chafetz")
+  authors <- c("Aaron Chafetz", "Tim Essam")
   
   #msd_source <- msd_period()
   
