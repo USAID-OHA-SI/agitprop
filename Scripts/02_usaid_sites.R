@@ -72,7 +72,7 @@
   
   #aggregate
   df_full_clean <- df_full_clean %>% 
-    select(-`Disaggregation Type`) %>% 
+    # select(-`Disaggregation Type`) %>% 
     group_by_if(is.character) %>% 
     summarise_if(is.double, sum, na.rm = TRUE) %>% 
     ungroup()
@@ -144,12 +144,12 @@
     geom_text(aes(label = comma(distinct_facilities)),
               family = "Source Sans Pro Light", color = moody_blue,
               size = 60/.pt) +
-    geom_text(aes(x_label, y_label, label = ind_display),
+    geom_text(aes(x_label, y_label, label = paste(str_wrap(ind_display, width = 30), "\n")),
               family = "Source Sans Pro Light", color = trolley_grey, 
-              size = 11/.pt) +
+              size = 15/.pt) +
     geom_text(aes(x_sub, y_sub, label = "sites"),
               family = "Source Sans Pro Light", color = trolley_grey, 
-              size = 11/.pt) +
+              size = 15/.pt) +
     expand_limits(x = c(0, 1), y = c(0,1)) +
     facet_grid(~indicator) +
     labs(x = NULL, y = NULL,
@@ -166,3 +166,6 @@
   
   si_save("Images/02_usaid_facilities.png",
           scale = 1.2, width = 10, height = 3) 
+  
+  ggsave("Graphics/02_usaid_facilities.svg",
+         scale = 1.2, width = 10, height = 3)

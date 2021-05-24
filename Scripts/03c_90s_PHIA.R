@@ -76,24 +76,30 @@
   df_phia %>% 
     ggplot(aes(value, country_lab, color = subindicator)) +
     geom_vline(aes(xintercept = .95), linetype = "dotted", color = trolley_grey) +
-    geom_point(size = 2, position=dodge) +
+    geom_linerange(aes(xmin=confidence_lower, xmax=confidence_upper, color = subindicator), alpha = .25, size = 2) +
+    geom_point(aes(fill = subindicator), shape = 21, color = grey30k, stroke = 0.25, size = 3) +
     annotate("rect", xmin = 0, xmax = .95, ymin = .5, ymax = Inf, fill = "#808080", alpha = .05) +
-    geom_linerange(aes(xmin=confidence_lower, xmax=confidence_upper), 
-                   position = dodge, alpha = .6) +
+
     facet_grid(prev_group ~., scales = "free_y") +
     expand_limits(x = c(0, 1)) +
     scale_x_continuous(labels = percent, expand = c(.005, .005)) +
     scale_color_manual(values = c("Diagnosed" = old_rose, "On treatment" = golden_sand, 
+                                 "Virally suppressed" = scooter),
+                      guide = "none") +
+    scale_fill_manual(values = c("Diagnosed" = old_rose, "On treatment" = golden_sand, 
                                   "Virally suppressed" = scooter),
                        guide = guide_legend(reverse = TRUE)) +
     labs(x = NULL, y = NULL, color = NULL,
          title = "PHIA SURVEY RESULTS SHOW MUCH GROUND TO BE MADE UP TO REACH 95-95-95",
          caption = glue("Source: PHIA 90-90-90 Lab or self-reported ARV [{date_pulled}]
                         SI analytics: {paste(authors, collapse = '/')}
-                     US Agency for International Development")) +
+                     US Agency for International Development"),
+         fill = "", 
+         size = element_blank()) +
     si_style_xgrid() +
     theme(panel.spacing = unit(1, "line"))
   
   
   si_save("Images/03c_phia_90s.png") 
+  ggsave("Graphics/03c_phia_90s.svg", scale = 1.2, width = 10, height = 7)
   
