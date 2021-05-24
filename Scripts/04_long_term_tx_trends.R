@@ -24,7 +24,7 @@
 
 # GLOBAL VARIABLES --------------------------------------------------------
   
-  authors <- c("Aaron Chafetz")
+  authors <- c("Aaron Chafetz & Tim Essam")
   
   msd_source <- msd_period()
 
@@ -41,7 +41,7 @@
   #Current MSD
   df <- si_path() %>% 
     return_latest("OU_IM") %>% 
-    read_rds()
+    read_msd()
   
   #Archived MSD
   df_arch <- si_path() %>% 
@@ -115,11 +115,11 @@
     ggplot(aes(year, value)) +
     geom_col(aes(alpha = bar_alpha, fill = ind_label),
              position = position_dodge(width = 0), width = 1.8) +
-    geom_hline(yintercept = seq(3000000, 18000000, 3000000), color = "white") +
+    geom_hline(yintercept = seq(5e6, 25e6, 5e6), color = "white") +
     scale_y_continuous(labels = unit_format(1, unit = "M", scale = 1e-6),
-                       breaks =  seq(3000000, 18000000, 3000000),
+                       breaks =  seq(5e6, 25e6, 5e6),
                        position = "right", expand = c(.005, .005)) +
-    scale_x_continuous(expand = c(.005, .005))+
+    scale_x_continuous(expand = c(.005, .005)) +
     scale_fill_manual(values = c(moody_blue_light, moody_blue)) +
     scale_alpha_identity() +
     labs(x = NULL, y = NULL, fill = NULL,
@@ -128,6 +128,8 @@
                         SI analytics: {paste(authors, collapse = '/')}
                      US Agency for International Development")) +
     si_style_nolines()
+  
 
   si_save("Images/04_tx_trends.png")   
+  ggsave("Graphics/04_tx_trends.svg", scale = 1.2, width = 10, height = 7)
   

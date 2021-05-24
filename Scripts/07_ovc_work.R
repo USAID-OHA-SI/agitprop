@@ -30,7 +30,7 @@
   
   df <- si_path() %>% 
     return_latest("OU_IM") %>% 
-    read_rds() 
+    read_msd() 
   
   df_arch <- si_path() %>% 
     return_latest("OU_IM_FY15") %>% 
@@ -131,7 +131,6 @@
            fundingagency == "USAID",
            fiscal_year >=2018) %>%
     mutate(otherdisaggregate = ifelse(is.na(otherdisaggregate), "NA", otherdisaggregate)) %>% 
-    count(indicator, otherdisaggregate, statushiv)
     filter(otherdisaggregate != "No HIV Status") %>% 
     group_by(fiscal_year, indicator) %>% 
     summarise(across(starts_with("qtr"), sum, na.rm = TRUE)) %>% 
@@ -142,7 +141,7 @@
     mutate(knownstat = OVC_HIVSTAT/OVC_SERV_UNDER_18)
 
   latest_stat <- df_knowstatus %>% 
-    filter(period == max(period)) %>% 
+    dplyr::filter(period == max(period)) %>% 
     pull()
   
   v3 <- df_knowstatus %>% 
@@ -166,4 +165,8 @@
     plot_layout(heights = c(2, 1))
 
   v1 + v_right  
+  
+  
+  
+  
   

@@ -61,7 +61,7 @@
            goal = ifelse(indicator == "TX_CURR", 1, trgt_rng),
            indicator = factor(indicator, ind_sel),
            lab = ifelse(indicator == ind_sel[1],
-                        glue("R - {clean_number(cumulative, 1)}\nT - {clean_number(targets,1)}"),
+                        glue("Results - {clean_number(cumulative, 1)}\nTargets - {clean_number(targets,1)}"),
                         glue("{clean_number(cumulative, 1)}\n{clean_number(targets,1)}"))) 
   
   df_viz %>% 
@@ -72,7 +72,7 @@
               family = "Source Sans Pro SemiBold", color = "gray30") +
     geom_text(aes(y = .1, label = lab),
               family = "Source Sans Pro", color = trolley_grey) +
-    facet_grid(~indicator, switch = "x") +
+    facet_grid(~indicator) +
     scale_size(range = c(10, 40)) +
     scale_color_identity() +
     si_style_nolines() +
@@ -84,13 +84,13 @@
                         SI analytics: {paste(authors, collapse = '/')}
                      US Agency for International Development")) +
     theme(legend.position = "none",
-          strip.text.x = element_text(hjust = .5),
+          strip.text.x = element_text(hjust = .5, size = 14),
           axis.text.x = element_blank(),
           axis.text.y = element_blank())
   
   si_save("Images/05_achievement.png", height = 4)
   
-  
+  ggsave("Graphics/05_achievement.svg", height = 4, width = 10)
   
   
   
