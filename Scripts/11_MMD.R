@@ -86,7 +86,17 @@
   #country trends for just o3mo
   df_mmd_ou <- df_mmd %>% 
     filter(otherdisaggregate == "o3mmd") %>%
-    arrange(countryname, period) %>% 
+    arrange(countryname, period) 
+  
+  #add on USAID total rows
+  df_mmd_ou <- df_mmd_ou  %>%
+    mutate(countryname = "USAID") %>% 
+    group_by(period, countryname, indicator, otherdisaggregate) %>% 
+    summarise(across(where(is.double), sum, na.rm = TRUE)) %>% 
+    bind_rows(df_mmd_ou, .)
+    
+  #create share on +3mo
+  df_mmd_ou <- df_mmd_ou %>% 
     mutate(share = tx_mmd/tx_curr) 
   
   #data points for plotting
@@ -103,16 +113,22 @@
                                    TRUE ~ glue("{countryname}<br><span style = 'font-size:8pt'>{clean_number(max_mmd)} / {clean_number(max_tx)}</span>"))) %>% 
     filter(max_tx > 0)
   
-  #identify the MMD share for the largets 10 countires
+  #identify the MMD share for the largets 9 countires
   top <- df_mmd_ou %>% 
-    filter(period == max(period)) %>% 
+    filter(countryname != "USAID",
+           period == max(period)) %>% 
     arrange(desc(tx_curr)) %>% 
-    slice_max(n = 10, order_by = tx_curr) %>% 
+    slice_max(n = 11, order_by = tx_curr) %>% 
     summarise(across(c(tx_curr, tx_mmd), sum, na.rm = TRUE),
               n = n()) %>% 
     mutate(share = percent(tx_mmd/tx_curr, 1))
   
-
+  #top focus countries
+  top_cntry <- df_mmd_ou %>% 
+    filter(period == max(period)) %>% 
+    slice_max(order_by = tx_curr, n = top$n + 1) %>% 
+    pull(countryname)
+  
 # VIZ ---------------------------------------------------------------------
   
   msd_source <- identifypd(df) %>% 
@@ -140,18 +156,24 @@
     theme(legend.position = "none")
   
   
-  si_save("Images/11a_mmd_trends.png")  
+  si_save("Images/11a_mmd_trends.png")
+  
+  si_save("Graphics/11a_mmd_trends.svg")  
   
   
+
   
-  df_mmd_ou %>% 
-    ggplot(aes(period, share, group = country_lab)) +
-    geom_area(fill = scooter, color = scooter, alpha = .4, size = .9) +
-    geom_point(aes(y = endpoints), color = scooter, na.rm = TRUE) +
+  df_mmd_ou %>%
+    filter(countryname %in% top_cntry) %>%
+    mutate(clr = ifelse(countryname == "USAID", genoa, scooter)) %>% 
+    ggplot(aes(period, share, group = country_lab, color = clr, fill = clr)) +
+    geom_area(alpha = .4, size = .9) +
+    geom_point(aes(y = endpoints), na.rm = TRUE) +
     facet_wrap(~fct_reorder(country_lab, tx_curr, max, .desc = TRUE)) +
     scale_y_continuous(label = percent, 
                        breaks = seq(0, 1, .5)) +
     scale_x_discrete(breaks = c("FY19Q1", "FY20Q1", "FY21Q1")) +
+    scale_color_identity(aesthetics = c("color","fill")) +
     labs(x = NULL, y = NULL,
          title = glue("USAID HAS {top$share} OF TREATMENT PATIENTS ON +3 MONTHS OF MMD IN THE LARGEST {top$n} COUNTRIES"),
          subtitle = glue("{max(df_mmd_ou$period)}"),
@@ -169,6 +191,8 @@
           strip.text = element_markdown())
 
   si_save("Images/11b_mmd_trends_by_country.png")  
+  
+  si_save("Graphics/11b_mmd_trends_by_country.svg")  
 
  
   
