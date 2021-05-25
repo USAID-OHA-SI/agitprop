@@ -68,13 +68,16 @@
   df_vmmc %>% 
     ggplot(aes(period, value)) + 
     geom_col(aes(fill = fundingagency, alpha = fundingagency), position = "identity") +
-    geom_text(aes(y = 30000, label = percent(share, 1)), na.rm = TRUE, 
-              family = "Source Sans Pro SemiBold", color = "white") +
-    geom_errorbar(aes(ymin = total, ymax = total), color = trolley_grey, 
+    geom_text(aes(label = percent(share, 1)), na.rm = TRUE, vjust = -1, 
+              family = "Source Sans Pro SemiBold", color = trolley_grey) +
+    geom_errorbar(aes(ymin = total, ymax = total), color = trolley_grey_light, 
                   size = .9, na.rm = TRUE) +
     scale_fill_manual(values = c("USAID" = moody_blue, "PEPFAR" = trolley_grey_light)) +
     scale_alpha_manual(values = c("USAID" = .8, "PEPFAR" = .4)) +
-    scale_y_continuous(label = comma, position = "right", expand = c(.005, .005)) +
+    scale_y_continuous(labels = unit_format(.01, unit = "M", scale = 1e-6),
+                       breaks = seq(0, 1.25e6,.25e6), 
+                       position = "right", expand = c(.005, .005)) +
+    expand_limits(y = 1.25e6) +
     labs(x = NULL, y = NULL, fill = NULL, alpha = NULL,
          title = glue("USAID HAS CONTRIBUTED {percent(last_4q$share,1)} OF THE {clean_number(last_4q$PEPFAR, 1) %>% toupper} PEPFAR VOLUNTARY MALE CIRCUMCISIONS IN THE LAST 4 QUARTERS"),
          caption = glue("Source: {msd_source}
@@ -83,4 +86,5 @@
     si_style_ygrid()
 
   si_save("Images/10_vmmc_contribution.png")  
+  si_save("Graphics/10_vmmc_contribution.svg")  
   
