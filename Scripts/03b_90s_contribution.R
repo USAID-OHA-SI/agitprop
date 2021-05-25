@@ -103,8 +103,9 @@ source("Scripts/99_utilities.R")
     mutate(x = .1,
            y = .5,
            text = case_when(indicator == "HTS_TST" ~ 
-                              glue("{pd_text} {curr_cy}, USAID administered <span style='color:{old_rose}'>**{value} million** HIV tests</span>,<br> 
-                                   helping <span style='color:{old_rose}'>**{extra} million people**</span> to learn their <span style='color:{old_rose}'>HIV-positive</span> status."),
+                              glue("{pd_text} {curr_cy}, USAID administered<br>
+                                   <span style='color:{old_rose}'>**{value} million** HIV tests</span>, helping <span style='color:{old_rose}'>**{extra} million people**</span> to learn their<br>
+                                   <span style='color:{old_rose}'>HIV-positive</span> status."),
                             indicator == "TX_CURR" ~
                               glue("Around the world, USAID currently supports life-saving<br>
                                    <span style='color:{old_rose}'>HIV treatment</span> for <span style='color:{old_rose}'>**{value} million people**</span>, of which <span style='color:{old_rose}'>**{extra} million<br>
@@ -133,12 +134,13 @@ source("Scripts/99_utilities.R")
           axis.text.x = element_blank(),
           axis.text.y = element_blank(),
           panel.spacing.y = unit(1, "pt"),
-          plot.background = element_rect(fill = si_palettes$denims[1]),
+          # plot.background = element_rect(fill = si_palettes$denims[1]),
           plot.caption = element_text(color = "grey40"))
   
   
   
   si_save("Images/03b_usaid_mer_90s.png") 
+  si_save("Graphics/03b_usaid_mer_90s.svg") 
   
 
   
