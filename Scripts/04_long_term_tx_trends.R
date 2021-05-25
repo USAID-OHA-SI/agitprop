@@ -115,7 +115,8 @@
   
   
   df_tx %>% 
-    filter(eoy_or_maxq) %>% 
+    filter(eoy_or_maxq == TRUE,
+           indicator %in% c("TX_CURR", "TX_NEW_cum")) %>% 
     ggplot(aes(year, value)) +
     geom_col(aes(alpha = bar_alpha, fill = ind_label),
              position = position_dodge(width = 0), width = 1.8) +
@@ -135,5 +136,5 @@
 
   si_save("Images/04_tx_trends.png")
   
-  ggsave("Graphics/04_tx_trends.svg", scale = 1.2, width = 10, height = 7)
+  si_save("Graphics/04_tx_trends.svg")
   
