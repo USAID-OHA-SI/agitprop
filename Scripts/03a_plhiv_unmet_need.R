@@ -34,11 +34,11 @@
   
   df <- si_path() %>% 
     return_latest("PSNU_IM") %>% 
-    read_rds()   
+    read_msd()   
   
   df_nat <- si_path() %>% 
     return_latest("NAT") %>% 
-    read_rds()  
+    read_msd()  
   
 # MUNGE -------------------------------------------------------------------
   
