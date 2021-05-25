@@ -38,6 +38,9 @@
 
 # OVC_SERV OVERALL --------------------------------------------------------
   
+  msd_source <- df %>% 
+    identifypd() %>% 
+    msd_period(period = .)
   
   df_kpi <- df %>% 
     filter(indicator == "OVC_SERV",
@@ -151,6 +154,7 @@
     geom_point(shape = 21, color = scooter, fill = "white", size = 10, stroke = 2) +
     geom_text(aes(label = percent(knownstat, 1)),
               family = "Source Sans Pro", size = 10/.pt) +
+    expand_limits(y = .2) +
     labs(subtitle = glue("{percent(latest_stat, 1)} of OVC <18 now know their status"),
          x = NULL, y = NULL) +
     si_style_nolines() +
@@ -164,7 +168,27 @@
   v_right <- (v2/v3) +
     plot_layout(heights = c(2, 1))
 
-  v1 + v_right  
+  v1 + v_right + plot_annotation(
+      title = str_wrap("USAID WORKS TO SUPPORT PEPFAR'S MISSION 
+                       TO MITIGATE THE IMPACT OF HIV/AIDS ON CHILDREN, 
+                       ADOLESCENTS AND THEIR FAMILIES AS WELL AS PREVENING 
+                       HIV/AIDS-RELATED MORTALITY"),
+      caption = glue("Source: {msd_source}
+                      SI analytics: {paste(authors, collapse = '/')}
+                     US Agency for International Development")
+    ) & 
+    theme(plot.title = element_text(family = "Source Sans Pro",
+                                    size = 14,
+                                    face = "bold",
+                                    color =  "#202020",
+                                    hjust = 0),
+          plot.caption = element_text(family = "Source Sans Pro",
+                                      size = 9,
+                                      color = "#909090",
+                                      hjust = 1, vjust = 1))
+  
+  si_save("Images/07_ovc_usaid.png")
+  si_save("Graphics/07_ovc_usaid.svg")
   
   
   
