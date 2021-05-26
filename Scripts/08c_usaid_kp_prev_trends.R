@@ -29,14 +29,6 @@
 
 # IMPORT ------------------------------------------------------------------
   
-  #Source: PEPFAR Spotlight (public)
-  df_hist <- read_csv("Data/Country and Regional Targets_Results 2004-2016.csv",
-                      na = c("", "NA", "null"),
-                      col_types = c(Year = "i",
-                                    `Measure Value` = "d",
-                                    .default = "c")) %>% 
-    clean_names()
-  
   #Current MSD
   df <- si_path() %>% 
     return_latest("OU_IM_FY19") %>% 
@@ -62,10 +54,14 @@
   df_kp <- df %>% 
     bind_rows(df_arch) %>% 
     filter(indicator == "KP_PREV",
-           standardizeddisaggregate == "Total Numerator") %>% 
-    group_by(fiscal_year, indicator) %>% 
+           standardizeddisaggregate == "Total Numerator") 
+  
+  df_kp <- df_kp %>% 
+    bind_rows(df_kp %>% mutate(fundingagency = "PEPFAR")) %>%
+    group_by(fiscal_year, fundingagency, indicator) %>% 
     summarise(across(cumulative, sum, na.rm = TRUE)) %>% 
-    ungroup()
+    ungroup() %>% 
+    filter(fundingagency %in% c("USAID", "PEPFAR"))
   
   df_kp <- df_kp %>% 
     reshape_msd() %>% 
@@ -73,55 +69,52 @@
     select(-period_type) %>% 
     mutate(source = "MSD")
 
-  df_hist_clean <- df_hist %>% 
-    filter(indicator_short_name == "Key Pop Prevention Services",
-           measure_name == "Results",
-           country_region != "Global",
-           dsd_ta == "DSD+TA") %>% 
-    group_by(period = year, indicator = indicator_short_name) %>% 
-    summarise(value = sum(measure_value, na.rm = TRUE)) %>% 
-    ungroup()
-
-  df_hist_clean <- df_hist_clean %>% 
-    mutate(indicator = recode(indicator,
-                              "Key Pop Prevention Services" = "KP_PREV"),
-           period = glue("FY{str_sub(period, 3)}"),
-           source = "Spotlight") %>% 
-    filter(!period %in% unique(df_kp$period))
-  
-  df_kp <- bind_rows(df_hist_clean, df_kp)
-
-
   df_kp <- df_kp %>% 
-    mutate(bar_alpha = case_when(period == curr_fy & curr_qtr != 4 ~ .6,
-                                 TRUE ~ 1),
-           year = glue("20{str_sub(period, 3, 4)}") %>% as.integer,
-           ind_label = "Key Pop Prevention Services")
-  
-  
+    group_by(period) %>% 
+    mutate(share = value/lag(value)) %>% 
+    ungroup()
   
   df_viz <- df_kp %>% 
-    filter(source != "Spotlight") 
+    mutate(bar_alpha = case_when(fundingagency == "PEPFAR" ~ .6,
+                                 period == curr_fy & curr_qtr != 4 ~ .4,
+                                 TRUE ~ 1),
+           year = glue("20{str_sub(period, 3, 4)}") %>% as.integer,
+           ind_label = "Key Pop Prevention Services",
+           total = case_when(fundingagency == "PEPFAR" ~ value))
+  
+  
   
   df_viz %>%
-    ggplot(aes(year, value)) +
-    geom_col(aes(alpha = bar_alpha), fill = denim) +
+    ggplot(aes(year, value, fill = fundingagency, alpha = bar_alpha)) +
+    geom_col(position = "identity") +
+    geom_errorbar(aes(ymin = total, ymax = total), color = trolley_grey_light, 
+                  size = .9, na.rm = TRUE) +
+    geom_text(aes(label = percent(share, 1)), na.rm = TRUE, vjust = -1, 
+              family = "Source Sans Pro SemiBold", color = trolley_grey) +
     scale_y_continuous(labels = unit_format(1, unit = "M", scale = 1e-6),
                        position = "right", expand = c(.005, .005)) +
-    scale_x_continuous(expand = c(.005, .005), n.breaks = nrow(df_viz))+
+    scale_x_continuous(expand = c(.005, .005), n.breaks = unique(df_viz$period) %>% length())+
     scale_alpha_identity() +
+    scale_fill_manual(values = c("USAID" = denim, "PEPFAR" = trolley_grey_light)) +
     labs(x = NULL, y = NULL, fill = NULL,
-         title = "PEPFAR HAS REACH OVER 2 MILLION TARGETED KEY POPULATION INDIVIDUALS EACH YEAR SINCE 2017 WITH HIV PREVENTION SERVICES",
+         title = str_wrap("USAID HAS SEEN A DECLINING SHARE OF THE PEPFAR'S REACH OF HIV PREVENTION SERVICESOVER TO KEY POPULATION INDIVIDUALS BUT HAS REACHED 1.3 MILLION EACH YEAR SINCE 2017", 100),
          subtitle = "PEPFAR Key Pop Individuals Provided Prevention Services",
-         caption = glue("Source: Spotlight FY10-14, {msd_source} (including FY15-18)
+         caption = glue("Source: {msd_source} (including FY15-18)
                         SI analytics: {paste(authors, collapse = '/')}
                      US Agency for International Development")) +
     si_style_ygrid()
 
-  si_save("Images/08a_kp_trends.png")
+  si_save("Images/08c_kp_trends_usaid.png")
   
-  si_save("Graphics/08a_kp_trends.svg", scale = 1.2)
+  
+  si_save("Graphics/08c_kp_trends_usaid.svg")
 
   
-
+ df %>% 
+    bind_rows(df_arch) %>% 
+    filter(fundingagency == "USAID",
+           indicator == "KP_PREV",
+           standardizeddisaggregate == "Total Numerator") %>% 
+   distinct(fiscal_year, countryname) %>% 
+   count(fiscal_year)
   
