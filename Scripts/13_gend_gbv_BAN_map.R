@@ -9,6 +9,7 @@
 
   library(tidyverse)
   library(glitr)
+  library(gisr)
   library(glamr)
   library(ICPIutilities)
   library(extrafont)
@@ -19,6 +20,7 @@
   library(glue)
   library(janitor)
   library(lubridate)
+  library(rnaturalearth)
   
   source("Scripts/99_utilities.R")
 
@@ -35,25 +37,14 @@
     filter(indicator == "GEND_GBV", 
            standardizeddisaggregate == "Total Numerator")
   
-  spdf <- ne_countries(type = "sovereignty", 
-                       scale = 110, 
-                       returnclass = "sf") %>% 
-    select(sovereignt, admin, name, adm0_a3, continent, subregion) %>% 
-    filter(admin != "Antarctica") %>% # Remove Antarctica
-    clean_countries(colname = "admin")
+# MUNGE -------------------------------------------------------------------  
   
   #current FY
   curr_fy <- identifypd(df, "year")
   
-
-
-
-
-  
-# MUNGE -------------------------------------------------------------------  
-  
   # For captions
-  msd_source <- df %>% 
+  msd_source <- 
+    df %>% 
     identifypd() %>% 
     msd_period(period = .)
   
@@ -63,53 +54,89 @@
     filter(fundingagency == "USAID", fiscal_year == 2021) %>% 
     group_by(countryname, operatingunit, fiscal_year) %>% 
     summarise(across(matches("tar|cumul"), sum, na.rm = T))
-
   
-   df_gbv_glb <-  df %>% 
+  # How many mechanisms support GBV in FY21?
+  df_gbv_mech_count <- 
+    df %>% 
+    filter(fundingagency == "USAID", fiscal_year == 2021) %>% 
+    group_by(countryname, operatingunit, fiscal_year, mech_code) %>% 
+    summarise(across(matches("tar|cumul"), sum, na.rm = T)) %>% 
+    ungroup() %>% 
+    distinct(mech_code, countryname) %>% 
+    count(countryname)
+
+  # Grab distinct list of African countries to filter the spatial data 
+  ou_gbv_afr <- 
+    df_gbv %>% 
+    ungroup() %>% 
+    filter(!countryname %in% c("Papua New Guinea", "Dominican Republic", "Haiti")) 
+  
+  # Global numbers for the achievement plot
+   df_gbv_glb <-
+    df %>% 
     filter(fundingagency == "USAID") %>% 
     group_by(fiscal_year) %>% 
     summarise(across(matches("tar|cumul"), sum, na.rm = T)) %>% 
     mutate(ach = cumulative/targets,
           fill_col = if_else(fiscal_year == 2021, "#fd9873", burnt_sienna)) 
    
-   fy21_ach <- df_gbv_glb %>% filter(fiscal_year == 2021) %>% pull(cumulative)/1e3
+   #What is achievement for FY21
+   fy21_ach <- 
+     df_gbv_glb %>% 
+     filter(fiscal_year == 2021) %>% 
+     pull(cumulative)/1e3
   
-   
-   # Define a projection to make Greenland a bit smaller & allow for zooom
-   spdf <- ms_simplify(spdf, keep = 0.75) %>% 
-     st_transform(., "+proj=robin +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs")
-   
-   spdf_renamed <- spdf %>% 
-     mutate(sovereignt = case_when(
-       sovereignt == "Ivory Coast" ~ "Cote d'Ivoire",
-       sovereignt == "Swaziland" ~ "Eswatini",
-       sovereignt == "United Republic of Tanzania" ~ "Tanzania",
-       TRUE ~ sovereignt
-     ))
-   
-   # Check PEPFAR OUs to the shapefile
-   intersect(df_gbv %>% ungroup() %>% distinct(countryname) %>% pull(), 
-             spdf_renamed %>% st_drop_geometry() %>% distinct(sovereignt) %>% 
-               pull()) %>% 
-     length() == dim(df_gbv)[1]
-   
-   cntry_count <- df_gbv %>% distinct(countryname) %>% pull() %>% length()
-   
-   gbv_geo <- 
-     spdf_renamed %>% 
-     left_join(., df_gbv, by = c("sovereignt" = "countryname"))
+   # Map of just africa, add in PNG like haiti in DREAMS slide
+   gbv_geo_afr <- 
+     rnaturalearth::ne_countries(continent = "africa", returnclass = "sf") %>% 
+     select(admin) %>% 
+     clean_countries(colname = "admin") %>% 
+     left_join(., ou_gbv_afr, by = c("admin" = "countryname")) 
 
+   cntry_count <- 
+     df_gbv %>% 
+     distinct(countryname) %>% 
+     pull() %>% 
+     length()
+
+  # Set shapefile for just PNG, include Indoensia for a cleaner map 
+   gbv_geo_png <- 
+     ne_countries(type = "sovereignty", 
+                               scale = 10, 
+                               returnclass = "sf") %>% 
+     filter(admin %in% c("Papua New Guinea", "Indonesia")) %>% 
+     select(admin) %>% 
+     left_join(., df_gbv %>% filter(str_detect(countryname, "Papua")), 
+               by = c("admin" = "countryname")) %>% 
+     mutate(fill_col = if_else(admin != "Indonesia", "#ffb790", trolley_grey_light))
+   
+  # Repeat for Haiti and DR, Caribbean small map; Fill colors may have to be adapted
+  # depending on what scale you are using
+   gbv_geo_dr <- 
+     ne_countries(type = "sovereignty", 
+                               scale = 10, 
+                               returnclass = "sf") %>% 
+     filter(admin %in% c("Dominican Republic", "Haiti")) %>% 
+     select(admin) %>% 
+     left_join(., df_gbv %>% filter(str_detect(countryname, "Dominican|Haiti")), 
+               by = c("admin" = "countryname")) %>% 
+     mutate(fill_col = "#FFC9A2")
+   
+   
    
 # PLOT --------------------------------------------------------------------
   
   # High level, what does it look like?
-   
     df_gbv_glb %>% 
     ggplot(aes(x = fiscal_year)) +
     geom_col(aes(y = targets), fill = grey10k) +
     geom_col(aes(y = cumulative, fill = fill_col)) +
       geom_hline(yintercept = seq(1e5, 3e5, by = 1e5), color = "white", size = 0.5) +
-      geom_text(aes(y = cumulative, label = percent(ach, 1)), size = 12/.pt, font = "SourceSansPro", color = color_plot_text, vjust = -0.25)+
+      geom_text(aes(y = cumulative, label = percent(ach, 1)), 
+                size = 12/.pt, 
+                font = "SourceSansPro", 
+                color = color_plot_text, 
+                vjust = -0.25)+
     si_style_xline() +
     scale_fill_identity() +
       scale_y_continuous(labels = unit_format(1, unit = "K", scale = 1e-3),
@@ -120,12 +147,12 @@
                         SI analytics: {paste(authors, collapse = '/')}
                      US Agency for International Development"))
 
-   si_save("Images/13_gbv_reached.png")
+   si_save("Graphics/13_gbv_reached.svg")
    
    # Map of FY21 Numbers?
    ggplot() +
-     geom_sf(data = gbv_geo, fill = "white", color = trolley_grey, size = .25) +
-     geom_sf(data = gbv_geo %>% filter(!is.na(cumulative)), aes(fill = cumulative),
+     geom_sf(data = gbv_geo_afr, fill = "white", color = trolley_grey_light, size = 0.25) +
+     geom_sf(data = gbv_geo_afr %>% filter(!is.na(cumulative)), aes(fill = cumulative),
              size = .4, 
              color = "white") +
      scale_fill_si(palette = "burnt_siennas", discrete = F, labels = comma)+
@@ -142,18 +169,45 @@
        plot.caption = element_text(hjust = 1),
        legend.key.width = unit(10, "lines"),
        legend.key.height = unit(0.8, "lines"),
-       legend.position = c(0.5, 0.05),
+       legend.position = c(0.15, 0.96),
        legend.title = element_text(size = 10, color = "grey45"),
        legend.text = element_text(color = "grey45"),
        legend.key.size = unit(1.2, "lines"),
      ) +
-     guides(fill = guide_colorbar(barheight = unit(4, units = "mm"),  
-                               barwidth = unit(100, units = "mm"),
+     guides(fill = guide_colorbar(barheight = unit(3, units = "mm"),  
+                               barwidth = unit(75, units = "mm"),
                                direction = "horizontal",
                                ticks.colour = "white",
                                title.position = "top",
                                title.hjust = 0.5)) 
 
-      si_save("Images/13_map_gbv_coverage.png")
+      si_save("Graphics/13_map_gbv_afr_coverage.svg",
+              height = 5,
+              width = 4.6, sc)
+    
+    #PNG
+      ggplot() +
+        geom_sf(data = gbv_geo_png, aes(fill = fill_col),
+                size = .4, 
+                color = "white") +
+        scale_fill_identity() +
+        coord_sf(xlim = c(133, 157), ylim = c(-12, 0)) +
+        si_style_map() 
+       
+      si_save("Graphics/13_map_gbv_png_coverage.svg", 
+              height = 1,
+              width = 2.3) 
       
-  
+    #HTI and DR
+      ggplot() +
+        geom_sf(data = gbv_geo_dr, aes(fill = fill_col),
+                size = .4, 
+                color = "white") +
+        scale_fill_identity() +
+        si_style_map() 
+      
+      si_save("Graphics/13_map_gbv_dr_coverage.svg", 
+              height = 1,
+              width = 4) 
+
+        
