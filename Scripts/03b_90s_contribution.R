@@ -3,7 +3,7 @@
 # PURPOSE:  90s/95s contribution 
 # LICENSE:  MIT
 # DATE:     2021-05-12
-# UPDATED:  2021-05-13
+# UPDATED:  2021-05-26
 
 # DEPENDENCIES ------------------------------------------------------------
   
@@ -42,9 +42,10 @@ source("Scripts/99_utilities.R")
   df_agg <- df %>% 
     filter(fundingagency == "USAID",
            indicator %in% c("HTS_TST", "HTS_TST_POS", "TX_CURR", "TX_PVLS"),
-           standardizeddisaggregate %in% c("Total Numerator", "Age/Sex/ARVDispense/HIVStatus"),
+           standardizeddisaggregate %in% c("Total Numerator", "Total Denominator","Age/Sex/ARVDispense/HIVStatus"),
            otherdisaggregate %in% c(NA, "ARV Dispensing Quantity - 3 to 5 months",
                                     "ARV Dispensing Quantity - 6 or more months")) %>% 
+    clean_indicator() %>% 
     mutate(indicator = ifelse(standardizeddisaggregate == "Age/Sex/ARVDispense/HIVStatus", "TX_MMDo3", indicator)) %>% 
     group_by(fundingagency, fiscal_year, indicator) %>% 
     summarise(across(starts_with("qtr"), sum, na.rm = TRUE)) %>% 
@@ -81,12 +82,21 @@ source("Scripts/99_utilities.R")
 
   #reshape
   df_agg <- df_agg %>% 
-    mutate(type = ifelse(indicator %in% c("HTS_TST_POS", "TX_MMDo3"), "extra", "value"),
+    mutate(type = ifelse(indicator %in% c("HTS_TST_POS", "TX_MMDo3", "TX_PVLS_D"), "extra", "value"),
            indicator = case_when(indicator == "HTS_TST_POS" ~ "HTS_TST", 
                                  indicator == "TX_MMDo3" ~ "TX_CURR",
+                                 indicator == "TX_PVLS_D" ~ "TX_PVLS",
                                  TRUE ~ indicator)) %>%
-    select(-value, -cy_cumulative) %>% 
-    spread(type, round)
+    select(-value) %>% 
+    spread(type, cy_cumulative) %>% 
+    mutate(vlc = case_when(indicator == "TX_PVLS" ~ value/extra))
+  
+  #clean number
+  df_agg <- df_agg %>% 
+    mutate(across(c(extra, value), ~ clean_number(., 1)),
+           across(c(extra, value), ~ str_replace(., "\\.[:digit:]K", " thousand")),
+           across(c(extra, value), ~ str_replace(., "M", " million")),
+           vlc = percent(vlc, 1))
     
 
 
@@ -104,14 +114,14 @@ source("Scripts/99_utilities.R")
            y = .5,
            text = case_when(indicator == "HTS_TST" ~ 
                               glue("{pd_text} {curr_cy}, USAID administered<br>
-                                   <span style='color:{old_rose}'>**{value} million** HIV tests</span>, helping <span style='color:{old_rose}'>**{extra} million people**</span> to learn their<br>
-                                   <span style='color:{old_rose}'>HIV-positive</span> status."),
+                                   <span style='color:{old_rose}'>**{value}** HIV tests</span>, helping <span style='color:{old_rose}'>**{extra} people**</span> to learn<br>
+                                   their <span style='color:{old_rose}'>HIV-positive</span> status."),
                             indicator == "TX_CURR" ~
                               glue("Around the world, USAID currently supports life-saving<br>
-                                   <span style='color:{old_rose}'>HIV treatment</span> for <span style='color:{old_rose}'>**{value} million people**</span>, of which <span style='color:{old_rose}'>**{extra} million<br>
+                                   <span style='color:{old_rose}'>HIV treatment</span> for <span style='color:{old_rose}'>**{value} people**</span>, of which <span style='color:{old_rose}'>**{extra}<br>
                                     people**</span> are receiving <span style='color:{old_rose}'>multi-month drug dispensing</span>."),
                             indicator == "TX_PVLS" ~
-                              glue("And of these, <span style='color:{old_rose}'>**{value} million**</span> are <span style='color:{old_rose}'>virally suppressed</span> ensuring<br>
+                              glue("And of these, <span style='color:{old_rose}'>**{vlc}**</span> are <span style='color:{old_rose}'>virally suppressed</span> ensuring<br>
                                    better health and reduced onward transmission of HIV.")))
   
   

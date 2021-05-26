@@ -45,8 +45,9 @@ msd_period <- function(type = "OU_IM", period = NULL){
 #'  clean_number(1500, 1)
 #'  df %>% mutate(value_label = clean_number(value)) }
 clean_number <- function(x, digits = 0){
-  dplyr::case_when(x >= 1000000 ~ glue("{round(x/1000000, digits)}M"),
-                   x >= 1000 ~ glue("{round(x/1000, digits)}K"),
+  dplyr::case_when(x >= 1e9 ~ glue("{round(x/1e9, digits)}B"),
+                   x >= 1e6 ~ glue("{round(x/1e6, digits)}M"),
+                   x >= 1e3 ~ glue("{round(x/1e3, digits)}K"),
                    TRUE ~ glue("{x}"))
 }
 
