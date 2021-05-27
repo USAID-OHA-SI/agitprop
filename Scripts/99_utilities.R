@@ -69,6 +69,11 @@ calc_achv <- function(df, curr_qtr = 4, add_color = TRUE){
   df_achv <- df %>% 
     mutate(achievement = cumulative/targets,
            qtr_goal = ifelse(indicator == "TX_CURR", 1, 1*(curr_qtr/4)),
+           achv_label = case_when(is.na(achievement) ~ NA_character_,
+                                  achievement <= qtr_goal-.25 ~ glue("<{100*(qtr_goal-.25)}%") %>% as.character,
+                                  achievement <= qtr_goal-.1 ~ glue("{100*(qtr_goal-.25)}-{100*(qtr_goal-.11)}%") %>% as.character,
+                                  achievement <= qtr_goal+.1 ~ glue("{100*(qtr_goal-.1)}-{100*(qtr_goal+.1)}%") %>% as.character,
+                                  TRUE ~ glue("+{100*(qtr_goal+.1)}%") %>% as.character),
            achv_color = case_when(is.na(achievement) ~ NA_character_,
                                   achievement <= qtr_goal-.25 ~ old_rose_light,
                                   achievement <= qtr_goal-.1 ~ burnt_sienna_light,
