@@ -34,8 +34,15 @@ library(treemapify)
 # IMPORT ------------------------------------------------------------------
   
   #Source: PEPFAR Spotlight (public)-I created a smaller data set from that for just FY20 ER
- df_EATree<-read_csv("Data/EA Tree map for expenditure.csv")%>%
-  mutate(PA_ER = glue("{`Program Area`}\n ${`Mutated Dolloar`}M")) 
+df_EATree<-read_csv("Data/EA Tree map for expenditure.csv")%>%
+  mutate(PA_ER = glue("{`Program Area`}\n ${`Mutated Dolloar`}M")) %>%
+  
+  mutate(pct = percent(`Percentage`, 1),
+         label_color = glue("{`Program Area`}\n ${`Mutated Dolloar`}M {`pct`}"),
+         label_color = case_when(
+           `Program Area` %in% c("Above Site Programs", "Testing") ~ grey90k,
+           TRUE ~ "white")
+  )
 
  
 
@@ -44,20 +51,21 @@ library(treemapify)
   #source info
 
 
-v1<-ggplot(df_EATree, aes(area = Expenditure, fill = Percentage,label=`PA_ER`)) +
-  geom_treemap()+
-  geom_treemap_text(family="Source Sans Pro", colour = "white", place = "centre",size=11)+
-  scale_fill_si(palette = "denims",discrete = FALSE)+
+v1<-ggplot(df_EATree, aes(area = Expenditure, fill = Percentage, label= paste(`PA_ER`, " | ", pct), color = label_color)) +
+  geom_treemap(color = "white", size = 1, alpha = 0.85)+
+  geom_treemap_text(family="Source Sans Pro", place = "centre", min.size = 8 ) + 
+  scale_fill_si(palette = "genoas",discrete = FALSE) +
+  scale_color_identity()+
   labs(x = NULL, y = NULL, fill = NULL,
-      # title = "IN FY20, USAID PEPFAR SPENT 65% OF THE BUDGET ON PREVENTION, SOCIO-ECONOMIC SUPPORT, AND TREATMENT",
-       subtitle = "FY20 Program Area Expenditure (Millions of USD)"
-      # caption = glue("Excludes Commodities and M&O
+       # title = "IN FY20, USAID PEPFAR SPENT 65% OF THE BUDGET ON PREVENTION, SOCIO-ECONOMIC SUPPORT, AND TREATMENT",
+       subtitle = "FY20 Direct Service Delivery Program Area Expenditure (USD $M)"
+       # caption = glue("Excludes Commodities and M&O
        #  Source: Spotlight Expenditure Data FY20
-        #                SI analytics: {paste(authors, collapse = '/')}
-         #            US Agency for International Development")) +
+       #                SI analytics: {paste(authors, collapse = '/')}
+       #            US Agency for International Development")) +
   )+
-       si_style_nolines()+
-  theme(legend.position = "none")+
+  si_style_nolines()+
+  theme(legend.position = "none")
 
   si_save("20_EA_trends.png")
   
