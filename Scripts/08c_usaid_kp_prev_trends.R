@@ -109,12 +109,5 @@
   
   si_save("Graphics/08c_kp_trends_usaid.svg")
 
-  
- df %>% 
-    bind_rows(df_arch) %>% 
-    filter(fundingagency == "USAID",
-           indicator == "KP_PREV",
-           standardizeddisaggregate == "Total Numerator") %>% 
-   distinct(fiscal_year, countryname) %>% 
-   count(fiscal_year)
+
   
