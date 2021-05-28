@@ -3,7 +3,7 @@
 # PURPOSE:  OVC care
 # LICENSE:  MIT
 # DATE:     2021-05-20
-# UPDATED: 
+# UPDATED:  2021-05-28
 
 # DEPENDENCIES ------------------------------------------------------------
   
@@ -96,31 +96,33 @@
     arrange(desc(cumulative))
   
           
-  df_hivstat_agg <- df_hivstat %>% 
-    mutate(status = case_when(statushiv == "Negative" ~ statushiv,
+  df_hivstat <- df_hivstat %>% 
+    mutate(status = case_when(statushiv == "Positive" ~ glue("{statushiv} {otherdisaggregate}") %>% as.character(),
                              otherdisaggregate == "Test Not Required" ~ otherdisaggregate,
-                             TRUE ~ statushiv)) %>% 
-    count(status, wt = cumulative, name = "value") %>%
-    mutate(status_lab = glue("{status}\n{clean_number(value)}")) %>% 
-    arrange(value)
+                             TRUE ~ statushiv),
+           share = cumulative/sum(cumulative)) %>% 
+    mutate(status_lab = glue("{status}\n{clean_number(cumulative)}")) %>% 
+    arrange(cumulative)
     
   
-  df_coords <- circleProgressiveLayout(df_hivstat_agg$value) 
+  df_coords <- circleProgressiveLayout(df_hivstat$cumulative) 
   
-  df_viz_vals <- df_hivstat_agg %>% 
+  df_viz_vals <- df_hivstat %>% 
     bind_cols(df_coords)
   
   df_viz_coords <- circleLayoutVertices(df_coords)
   
   v2 <- ggplot() +
     geom_polygon(data = df_viz_coords, aes(x, y, group = id, fill= as.factor(id))) +
-    geom_text(data = df_viz_vals, aes(x, y, label = status_lab), color = "white") +
+    geom_text(data = df_viz_vals, aes(x, y, label = status_lab), 
+              family = "Source Sans Pro",color = "white") +
     coord_equal() +
     scale_fill_manual(values = c(trolley_grey,
                                  burnt_sienna,
                                  trolley_grey_light,
-                                 scooter)) +
-    labs(subtitle = "OVC <18 HIV STATUS") +
+                                 scooter,
+                                 denim)) +
+    labs(subtitle = "VIRTUALLY 100% OF HIV POSITIVE OVC <18 ARE ON TREATMENT") +
     si_style_void() +
     theme(legend.position = "none")
   
@@ -170,13 +172,12 @@
 
   v1 + v_right + plot_annotation(
       title = str_wrap("USAID WORKS TO SUPPORT PEPFAR'S MISSION 
-                       TO MITIGATE THE IMPACT OF HIV/AIDS ON CHILDREN, 
-                       ADOLESCENTS AND THEIR FAMILIES AS WELL AS PREVENING 
-                       HIV/AIDS-RELATED MORTALITY"),
+                       TO MITIGATE THE IMPACT OF HIV ON CHILDREN, 
+                       ADOLESCENTS AND THEIR FAMILIES AS WELL AS PREVENTING 
+                       HIV-RELATED MORTALITY", 95),
       caption = glue("Source: {msd_source}
                       SI analytics: {paste(authors, collapse = '/')}
-                     US Agency for International Development")
-    ) & 
+                     US Agency for International Development")) & 
     theme(plot.title = element_text(family = "Source Sans Pro",
                                     size = 14,
                                     face = "bold",
