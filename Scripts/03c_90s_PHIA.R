@@ -110,5 +110,5 @@
   
   
   si_save("Images/03c_phia_90s.png") 
-  ggsave("Graphics/03c_phia_90s.svg", scale = 1.2, width = 10, height = 7)
+  si_save("Graphics/03c_phia_90s.svg")
   
