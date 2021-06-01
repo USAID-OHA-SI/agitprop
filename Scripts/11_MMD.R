@@ -3,7 +3,7 @@
 # PURPOSE:  MMD
 # LICENSE:  MIT
 # DATE:     2021-05-14
-# UPDATED: 
+# UPDATED:  2021-06-01
 
 # DEPENDENCIES ------------------------------------------------------------
   
@@ -78,8 +78,12 @@
     group_by(period, otherdisaggregate) %>% 
     summarise(across(c(tx_curr, tx_mmd), sum,na.rm = TRUE)) %>% 
     ungroup() %>%
-    mutate(share = tx_mmd / tx_curr) 
+    mutate(share = tx_mmd / tx_curr)
   
+  #adjust for viz
+  df_mmd_agency <- df_mmd_agency %>% 
+    mutate(bar_color = ifelse(otherdisaggregate == "MMD - 3 months or more", scooter, genoa),
+           otherdisaggregate = glue("<span style='color:{bar_color}'>{otherdisaggregate}</span>"))
 
 # MMD FOR COUNTRY TRENDS --------------------------------------------------
 
@@ -134,16 +138,15 @@
   msd_source <- identifypd(df) %>% 
     msd_period(period = .)
   
-  
   df_mmd_agency %>% 
     ggplot(aes(period, tx_mmd)) + 
     geom_col(aes(y = tx_curr), fill = trolley_grey_light, alpha = .5) +
-    geom_col(aes(fill = otherdisaggregate)) +
+    geom_col(aes(fill = bar_color)) +
     geom_text(aes(label = percent(share, 1)), vjust = -1,
                   family = "Source Sans Pro", color = trolley_grey) +
     geom_errorbar(aes(ymax = tx_curr, ymin = tx_curr), color = trolley_grey) +
     facet_wrap(~otherdisaggregate) +
-    scale_fill_manual(values = c(scooter, genoa)) +
+    scale_fill_identity() +
     scale_y_continuous(labels = unit_format(1, unit = "M", scale = 1e-6),
                        position = "right", expand = c(.005, .005)) +
     labs(x = NULL, y = NULL,
@@ -153,7 +156,8 @@
                         SI analytics: {paste(authors, collapse = '/')}
                      US Agency for International Development")) +
     si_style_ygrid() +
-    theme(legend.position = "none")
+    theme(legend.position = "none",
+          strip.text = element_markdown(family = "Source Sans Pro SemiBold", size = 13))
   
   
   si_save("Images/11a_mmd_trends.png")
