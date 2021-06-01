@@ -122,7 +122,7 @@
                                  trolley_grey_light,
                                  scooter,
                                  denim)) +
-    labs(subtitle = "VIRTUALLY 100% OF HIV POSITIVE OVC <18 ARE ON TREATMENT") +
+    labs(subtitle = "Virtually 100% of OVCs <18 who are HIV positive are on treatment") +
     si_style_void() +
     theme(legend.position = "none")
   
@@ -131,7 +131,7 @@
 
   df_knowstatus <- df %>% 
     bind_rows(df_arch) %>% 
-    filter((indicator == "OVC_SERV_UNDER_18" & standardizeddisaggregate =="Total Numerator") |
+    filter((indicator == "OVC_SERV" & standardizeddisaggregate %in% c("Age/Sex/ProgramStatus", "Age/Sex") & trendscoarse == "<18") |
            (indicator == "OVC_HIVSTAT"& standardizeddisaggregate == "ReportedStatus"),
            fundingagency == "USAID",
            fiscal_year >=2018) %>%
@@ -143,11 +143,15 @@
     reshape_msd() %>% 
     arrange(period) %>% 
     pivot_wider(names_from = indicator) %>% 
-    mutate(knownstat = OVC_HIVSTAT/OVC_SERV_UNDER_18)
+    mutate(knownstat = OVC_HIVSTAT/OVC_SERV)
 
   latest_stat <- df_knowstatus %>% 
-    dplyr::filter(period == max(period)) %>% 
+    filter(period == max(period)) %>% 
     pull()
+  
+  latest_pd <- df_knowstatus %>% 
+    slice_max(order_by = period, n = 1) %>% 
+    pull(period)
   
   v3 <- df_knowstatus %>% 
     ggplot(aes(period, knownstat, group = period_type)) +
@@ -157,7 +161,7 @@
     geom_text(aes(label = percent(knownstat, 1)),
               family = "Source Sans Pro", size = 10/.pt) +
     expand_limits(y = .2) +
-    labs(subtitle = glue("{percent(latest_stat, 1)} of OVC <18 now know their status"),
+    labs(subtitle = glue("As of {latest_pd}, {percent(latest_stat, 1)} of OVC <18 now know their status"),
          x = NULL, y = NULL) +
     si_style_nolines() +
     theme(axis.text.y = element_blank())
