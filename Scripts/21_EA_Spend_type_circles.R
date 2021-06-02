@@ -103,3 +103,27 @@ v_right + plot_annotation(
 
  si_save("21_combined_trends.png")
 
+ 
+ v_right <-  v2 + (plot_spacer() + v1) + plot_layout(heights = c(2, 1))
+ v_right<-v2+plot_spacer() - v1 + plot_layout(ncol =3,width = c(2,1,1),heights = c(3,1, 1))
+
+ v_right<-v2| (plot_spacer()/v1/ plot_spacer())
+ v_right + plot_annotation(
+   title = str_wrap("USAID HAS FOCUSED ON DIRECT SERVICE DELIVERY FOR PREVENTION AND TREATMENT"),
+   caption = glue("Excludes Commodities and M&O
+         Source: Spotlight Expenditure Data FY18-20
+                        SI analytics: {paste(authors, collapse = '/')}
+                     US Agency for International Development")
+ ) & 
+   theme(plot.title = element_text(family = "Source Sans Pro",
+                                   size = 14,
+                                   face = "bold",
+                                   color =  "#202020",
+                                   hjust = 0),
+         plot.caption = element_text(family = "Source Sans Pro",
+                                     size = 9,
+                                     color = "#909090",
+                                     hjust = 1, vjust = 1))
+ si_save("21_combined_trends.png")
+ si_save("21_combined_trends.svg")
+ 
