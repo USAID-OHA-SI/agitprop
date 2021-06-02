@@ -19,19 +19,9 @@
   library(glue)
   library(janitor)
   library(lubridate)
-library(tidyverse)
-library(glitr)
-library(glamr)
-library(extrafont)
-library(scales)
-library(tidytext)
-library(patchwork)
-library(ggtext)
-library(glue)
-library(ICPIutilities)
 library(googlesheets4)
 library(readxl)
-library(here)
+
 #install treemaps
 install.packages("treemapify")
 library(treemapify)
@@ -69,22 +59,31 @@ cust_labels <- nrsmisc::every_nth(my_labels, 4, inverse = T)
 # Add this to your ggplot
 scale_x_discrete(labels = cust_labels)
 
+#Reshape dataframe to group by variables to show background budget
+df2<- df1 %>% 
+  distinct(`Fiscal Year`, `Source`,`Funding`) %>% 
+  count(`Fiscal Year`, `Source`,`Funding`) %>% 
+  group_by(`Fiscal Year`) %>% 
+  mutate(total_n = sum(`Funding`)) %>% 
+  ungroup()%>%
+  dplyr::mutate(`color` = `Source`)%>%
+  
+  mutate(color = ifelse(`Source` == "USAID: HQ", "#2057a7", 
+                        ifelse(`Source`=="USAID: Countries","#e07653",
+                               ifelse(`Source`=="USAID: GF/UNAIDS","#1e87a5","Other"))))
 
-
-
-v <- df1 %>% 
-  #distinct(`Source`,`Fiscal Year`) %>% 
-  #count(`Fiscal Year`,`Funding`, `color`) %>% 
-  ggplot(aes(`Fiscal Year`,`Funding`, n, fill=`color`)) +
-  scale_fill_identity()+
-  geom_col()
-
-v +
-  facet_wrap(~`Source`)+
+v <- df2 %>% 
+  #ggplot(data = d_bg, colour = "grey", alpha = .2)%>%
+  ggplot(aes(`Fiscal Year`,`Funding`, n, fill=`color`))+
+geom_col(aes(y = total_n), fill = "#8C8985", alpha = .2)+
+  geom_col()+
+ facet_wrap(~`Source`)+
+   scale_fill_identity()+
   si_style_nolines()+
   theme(legend.position = "none")+
   scale_y_continuous(labels = unit_format(.1, unit = "B"))+
   scale_x_discrete(labels = cust_labels)+
+  
  # theme(axis.text = element_blank(), 
   #      plot.title = element_markdown(family = "Source Sans Pro Regular",size = 14/.pt),face="bold",
    #     plot.caption=element_text(hjust = 0)) +
@@ -99,4 +98,4 @@ v +
   si_style_nolines()+
   theme(legend.position = "none")
 si_save("23_Powerfunding_trends.png")
- 
+si_save("23_Powerfunding_trends.svg")
