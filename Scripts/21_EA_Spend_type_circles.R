@@ -57,7 +57,7 @@ v2<-df_IT %>%
   geom_errorbar(aes(x = `FY`, ymin = Total, ymax =Total),
                 color = "#808080") +
   geom_hline(yintercept = 0, color = "#808080") +
-  geom_hline(yintercept = seq(1.0e9, 1.5e9, 1.0e9), color = "white", linetype = "dotted") +
+ # geom_hline(yintercept = seq(1.0e9, 2.0e9, 1.0e9), color = "white", linetype ="Dotted" ) +
   scale_y_continuous(labels = unit_format(.1, unit = "B", scale = 1e-9))+
   coord_cartesian(expand = F, clip = "off")+
   theme( 
@@ -77,35 +77,6 @@ v2<-df_IT %>%
 si_save("21a_combined_trends.png")
     
     ###combine data from heat map and the table
-v_right <- (v2|v1) +
-  plot_layout(heights = c(4, 4))
-
-v_right + plot_annotation(
-  title = str_wrap("USAID HAS FOCUSED ON DIRECT SERVICE DELIVERY FOR PREVENTION AND TREATMENT"),
-  caption = glue("Excludes Commodities and M&O
-         Source: Spotlight Expenditure Data FY18-20
-                        SI analytics: {paste(authors, collapse = '/')}
-                     US Agency for International Development")
-) & 
-  theme(plot.title = element_text(family = "Source Sans Pro",
-                                  size = 14,
-                                  face = "bold",
-                                  color =  "#202020",
-                                  hjust = 0),
-        plot.caption = element_text(family = "Source Sans Pro",
-                                    size = 9,
-                                    color = "#909090",
-                                    hjust = 1, vjust = 1))
-  
-  
-  si_save("21_combined_trends.svg")
-  
-
- si_save("21_combined_trends.png")
-
- 
- v_right <-  v2 + (plot_spacer() + v1) + plot_layout(heights = c(2, 1))
- v_right<-v2+plot_spacer() - v1 + plot_layout(ncol =3,width = c(2,1,1),heights = c(3,1, 1))
 
  v_right<-v2| (plot_spacer()/v1/ plot_spacer())
  v_right + plot_annotation(

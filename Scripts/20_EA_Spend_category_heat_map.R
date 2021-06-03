@@ -56,7 +56,7 @@ df_EATree<-read_csv("Data/EA Tree map for expenditure.csv")%>%
 
 v1<-ggplot(df_EATree, aes(area = Expenditure, fill = Percentage, label= paste(`PA_ER`, " | ", pct), color = label_color)) +
   geom_treemap(color = "white", size = 1, alpha = 0.85)+
-  geom_treemap_text(family="Source Sans Pro", place = "centre", min.size = 7 ) + 
+  geom_treemap_text(family = "Source Sans Pro", color = "#808080", place = "centre", min.size = 7 ) + 
   scale_fill_si(palette = "genoas",discrete = FALSE) +
   scale_color_identity()+
   labs(x = NULL, y = NULL, fill = NULL,
@@ -72,5 +72,5 @@ v1<-ggplot(df_EATree, aes(area = Expenditure, fill = Percentage, label= paste(`P
 
   si_save("20_EA_trends.png")
   
-  si_save("Graphics/04_tx_trends.svg")
+
   

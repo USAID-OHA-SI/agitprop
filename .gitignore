@@ -55,3 +55,7 @@ GIS/*
 Images/*
 Graphics/*
 Dataout/*
+*.csv
+*.svg
+Scripts/16_EA_Spend_type_circles.R
+Scripts/16_EA_Spend_type_circles.R
