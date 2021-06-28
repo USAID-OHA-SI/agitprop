@@ -3,7 +3,7 @@
 # PURPOSE:  treatment scale up since PEPFAR start
 # LICENSE:  MIT
 # DATE:     2021-05-14
-# UPDATED:  2021-05-24
+# UPDATED:  2021-06-28
 
 # DEPENDENCIES ------------------------------------------------------------
   
@@ -120,9 +120,9 @@
     ggplot(aes(year, value)) +
     geom_col(aes(alpha = bar_alpha, fill = ind_label),
              position = position_dodge(width = 0), width = 1.8) +
-    geom_hline(yintercept = seq(3000000, 18000000, 3000000), color = "white") +
+    geom_hline(yintercept = seq(3e6, 18e6, 3e6), color = "white") +
     scale_y_continuous(labels = unit_format(1, unit = "M", scale = 1e-6),
-                       breaks =  seq(3000000, 18000000, 3000000),
+                       breaks =  seq(3e6, 18e6, 3e6),
                        position = "right", expand = c(.005, .005)) +
     scale_x_continuous(expand = c(.005, .005))+
     scale_fill_manual(values = c(moody_blue_light, moody_blue)) +
@@ -134,6 +134,14 @@
                      US Agency for International Development")) +
     si_style_nolines()
 
+  
+  #data point for context
+  df_tx %>% 
+    filter(period == max(period),
+           indicator == "TX_CURR") %>%
+    select(indicator, value) %>% 
+    mutate(value = clean_number(value, 1))
+  
   si_save("Images/04_tx_trends.png")
   
   si_save("Graphics/04_tx_trends.svg")
