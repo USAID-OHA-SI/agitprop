@@ -89,15 +89,16 @@
                color = "white", 
                size = 0.15,
                linetype = "dotted") +
-    geom_col(data = . %>% filter(fiscal_year == 2021), aes(y = tot_hiv_free, x = 2022), fill = "#004964") +
-    geom_vline(xintercept = 2021.5, size = 0.5, linetype = "dotted", color = grey50k)+
+    #geom_col(data = . %>% filter(fiscal_year == 2021), aes(y = tot_hiv_free, x = 2022), fill = "#004964") +
+    #geom_vline(xintercept = 2021.5, size = 0.5, linetype = "dotted", color = grey50k)+
     geom_text(aes(y = hiv_free, label = comma(hiv_free)), size = 12/.pt,
               family = "Source Sans Pro SemiBold", vjust = 1.5, color = "white") +
-    geom_text(data = . %>% filter(fiscal_year == 2021), aes(y = tot_hiv_free, x = 2022, label = comma(tot_hiv_free)), size = 12/.pt,
-              family = "Source Sans Pro SemiBold", vjust = 1.5, color = "white") +
+    # geom_text(data = . %>% filter(fiscal_year == 2021), aes(y = tot_hiv_free, x = 2022, label = comma(tot_hiv_free)), size = 12/.pt,
+    #           family = "Source Sans Pro SemiBold", vjust = 1.5, color = "white") +
       si_style_xline() +
       scale_fill_identity() +
-    scale_x_continuous(labels = c("2018", "2019", "2020", "2021 (through Q2)", "2018-2021"))+
+    #scale_x_continuous(labels = c("2018", "2019", "2020", "2021 (through Q2)", "2018-2021"))+
+    scale_x_continuous(labels = c("2018", "2019", "2020", "2021 (through Q2)")) +
     coord_cartesian(expand = F) +
     labs(x = NULL, y = NULL, fill = NULL,
          title = glue("USAID SUPPORT HAS ENABLED {round(total_count, 2)} MILLION BABIES TO BE BORN HIV-FREE TO MOTHERS LIVING WITH HIV"),
@@ -106,5 +107,5 @@
                      US Agency for International Development")) +
     theme(axis.text.y = element_blank())
 
-  si_save("Images/12_hiv_free_babies_v2.png", scale = 1.1)    
+  si_save("Images/12_hiv_free_babies_v1.png", scale = 1.1)    
     
