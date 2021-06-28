@@ -111,7 +111,7 @@
     ggplot(aes(y = ou_order)) +
     geom_col(aes(x = `Total Denominator`), fill = trolley_grey_light) +
     geom_col(aes(x = `Total Numerator`), fill = scooter, alpha = 0.75) +
-    geom_vline(xintercept = seq(1e5, 6e5, by = 1e5), color = "white") +
+    geom_vline(xintercept = seq(1e5, 3e5, by = 1e5), color = "white") +
     geom_text(aes(x = `Total Numerator`, label = percent(pct_complete, 1)), size = 9/.pt, font = "SourceSansPro", color = color_plot_text) +
     si_style_nolines() +
     scale_x_continuous(labels = unit_format(1, unit = "K", scale = 1e-3),
