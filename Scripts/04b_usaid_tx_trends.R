@@ -99,3 +99,10 @@
   
   si_save("Graphics/04b_tx_trends_usaid.svg")
   
+  #data point for context
+  df_tx %>% 
+    filter(period == max(period),
+           indicator == "TX_CURR") %>%
+    select(indicator, value) %>% 
+    mutate(value = clean_number(value, 1))
+  
