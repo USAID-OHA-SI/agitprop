@@ -3,7 +3,7 @@
 # PURPOSE:  90s/95s contribution 
 # LICENSE:  MIT
 # DATE:     2021-05-12
-# UPDATED:  2021-05-26
+# UPDATED:  2021-06-28
 
 # DEPENDENCIES ------------------------------------------------------------
   
@@ -74,11 +74,6 @@ source("Scripts/99_utilities.R")
     pull() %>% 
     year()
   
-  
-  #round numbers
-  df_agg <- df_agg %>% 
-    mutate(round = case_when(indicator == "HTS_TST" ~ comma(cy_cumulative/1000000, 1),
-                             TRUE ~ comma(cy_cumulative/1000000, .1)))
 
   #reshape
   df_agg <- df_agg %>% 
