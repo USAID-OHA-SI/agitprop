@@ -3,7 +3,7 @@
 # PURPOSE:  MMD
 # LICENSE:  MIT
 # DATE:     2021-05-14
-# UPDATED:  2021-06-01
+# UPDATED:  2021-06-29
 
 # DEPENDENCIES ------------------------------------------------------------
   
@@ -37,6 +37,7 @@
   df_mmd <- df %>% 
     filter(fundingagency == "USAID",
            indicator == "TX_CURR",
+           operatingunit != "South Africa",
            fiscal_year >= 2020,
            standardizeddisaggregate %in% c("Total Numerator", "Age/Sex/ARVDispense/HIVStatus")) %>% 
     mutate(otherdisaggregate = case_when(is.na(otherdisaggregate) ~ "total",
@@ -83,7 +84,7 @@
   #adjust for viz
   df_mmd_agency <- df_mmd_agency %>% 
     mutate(bar_color = ifelse(otherdisaggregate == "MMD - 3 months or more", scooter, genoa),
-           otherdisaggregate = glue("<span style='color:{bar_color}'>{otherdisaggregate}</span>"))
+           otherdisaggregate_md = glue("<span style='color:{bar_color}'>{otherdisaggregate}</span>"))
 
 # MMD FOR COUNTRY TRENDS --------------------------------------------------
 
@@ -145,19 +146,22 @@
     geom_text(aes(label = percent(share, 1)), vjust = -1,
                   family = "Source Sans Pro", color = trolley_grey) +
     geom_errorbar(aes(ymax = tx_curr, ymin = tx_curr), color = trolley_grey) +
+    # facet_wrap(~otherdisaggregate_md) +
     facet_wrap(~otherdisaggregate) +
     scale_fill_identity() +
     scale_y_continuous(labels = unit_format(1, unit = "M", scale = 1e-6),
                        position = "right", expand = c(.005, .005)) +
     labs(x = NULL, y = NULL,
          title = "USAID HAS WORKED TO ENSURE MORE PATIENTS HAVE ACCESS TO MULTI MONTH DISPENSING (MMD)",
+         subtitle = "South Africa, representing a third of USAID's treatment portfolio, has been excluded",
          caption = glue("MMD 3 months or more = 3-5 months and 6 months or more  
                         Source: {msd_source}
                         SI analytics: {paste(authors, collapse = '/')}
                      US Agency for International Development")) +
     si_style_ygrid() +
     theme(legend.position = "none",
-          strip.text = element_markdown(family = "Source Sans Pro SemiBold", size = 13))
+          # strip.text.x = element_markdown(family = "Source Sans Pro SemiBold", size = 13)
+          strip.text.x = element_text(family = "Source Sans Pro SemiBold", size = 13))
   
   
   si_save("Images/11a_mmd_trends.png")
@@ -179,8 +183,8 @@
     scale_x_discrete(breaks = c("FY19Q1", "FY20Q1", "FY21Q1")) +
     scale_color_identity(aesthetics = c("color","fill")) +
     labs(x = NULL, y = NULL,
-         title = glue("USAID HAS {top$share} OF TREATMENT PATIENTS ON +3 MONTHS OF MMD IN THE LARGEST {top$n} COUNTRIES"),
-         subtitle = glue("{max(df_mmd_ou$period)}"),
+         title = glue("IN {max(df_mmd_ou$period)}, USAID HAS {top$share} OF TREATMENT PATIENTS ON +3 MONTHS OF MMD IN THE LARGEST {top$n} COUNTRIES"),
+         subtitle = "South Africa, representing a third of USAID's treatment portfolio, has been excluded",
          caption = glue("MMD 3 months or more = 3-5 months and 6 months or more  
                         Source: {msd_source}
                         SI analytics: {paste(authors, collapse = '/')}
