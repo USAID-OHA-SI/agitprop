@@ -3,7 +3,7 @@
 # PURPOSE:  scale up of prep
 # LICENSE:  MIT
 # DATE:     2021-05-20
-# UPDATED: 
+# UPDATED:  2021-06-29
 
 # DEPENDENCIES ------------------------------------------------------------
   
@@ -116,7 +116,6 @@
     geom_vline(xintercept = pd_breaks, color = "white", 
                size = .9, linetype = "dotted") +
     geom_point(shape = 21, fill = "white", color = scooter, stroke = 1.5, na.rm = TRUE) +
-    annotate(geom = "text", x = 7, y = 1.e5, label = "DRAFT", size = 72, color = trolley_grey_light) +
     scale_y_continuous(label = clean_number, position = "right") +
     scale_x_discrete(breaks = pd_breaks, labels = str_remove(pd_breaks, "Q1")) +
     labs(x = NULL, y = NULL, 
@@ -124,7 +123,7 @@
                       onto PrEP this year across \\
                       {filter(df_cntry_cnt, fiscal_year == max(fiscal_year)) %>% pull()} \\
                       countries, up from {filter(df_cntry_cnt, fiscal_year == 2017) %>% pull()} \\
-                      in 2017") %>% toupper,
+                      countries in 2017") %>% toupper,
          subtitle = "Pre-Exposure Prophylaxis (PrEP) Quarterly Results",
          caption = glue("Source: {msd_source}
                         SI analytics: {paste(authors, collapse = '/')}
@@ -133,6 +132,5 @@
     
   si_save("Images/09_prep_scaleup.png")  
   
-  si_save("Graphics/09_prep_scaleup.svg", scale = 1.2, 
-          width = 10, height = 7)  
+  si_save("Graphics/09_prep_scaleup.svg")  
   
