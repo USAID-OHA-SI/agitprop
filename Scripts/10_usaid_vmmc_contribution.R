@@ -3,7 +3,7 @@
 # PURPOSE:  tracking VMMC contributions
 # LICENSE:  MIT
 # DATE:     2021-05-20
-# UPDATED:  2021-05-27
+# UPDATED:  2021-06-29
 
 # DEPENDENCIES ------------------------------------------------------------
   
@@ -38,13 +38,14 @@
 # MUNGE -------------------------------------------------------------------
 
   df_vmmc <- df %>% 
+    bind_rows(df_hist) %>%
     filter(indicator == "VMMC_CIRC",
            standardizeddisaggregate == "Total Numerator")
   
   df_vmmc <- df_vmmc %>% 
     bind_rows(df_vmmc %>% mutate(fundingagency = "PEPFAR")) %>% 
     group_by(fiscal_year, fundingagency) %>% 
-    summarise(across(starts_with("qtr"), sum, na.rm = TRUE)) %>% 
+    summarise(across(cumulative, sum, na.rm = TRUE)) %>% 
     ungroup() %>% 
     reshape_msd() %>% 
     select(-period_type)
@@ -57,10 +58,10 @@
     ungroup()
   
 
-  last_4q <- df_vmmc %>% 
+  curr_contribution <- df_vmmc %>% 
     select(-share, -total) %>% 
     pivot_wider(names_from = fundingagency) %>% 
-    slice_max(period, n = 4) %>% 
+    filter(period == max(period)) %>%  
     summarise(across(c(PEPFAR, USAID), sum, na.rm = TRUE)) %>% 
     mutate(share = USAID/PEPFAR)
   
@@ -103,18 +104,18 @@
                   size = .9, na.rm = TRUE) +
     scale_fill_manual(values = c("USAID" = moody_blue, "PEPFAR" = trolley_grey_light)) +
     scale_alpha_manual(values = c("USAID" = .8, "PEPFAR" = .4)) +
-    scale_y_continuous(labels = unit_format(.01, unit = "M", scale = 1e-6),
-                       breaks = seq(0, 1.25e6,.25e6), 
+    scale_y_continuous(labels = unit_format(1, unit = "M", scale = 1e-6),
+                       breaks = seq(0, 4e6, 1e6), 
                        position = "right", expand = c(.005, .005)) +
-    expand_limits(y = 1.25e6) +
+    expand_limits(y = 4e6) +
     labs(x = NULL, y = NULL, fill = NULL, alpha = NULL,
-         title = glue("USAID HAS CONTRIBUTED {percent(last_4q$share,1)} OF THE {clean_number(last_4q$PEPFAR, 1) %>% toupper} PEPFAR VOLUNTARY MALE CIRCUMCISIONS IN THE LAST 4 QUARTERS"),
+         title = glue("USAID HAS CONTRIBUTED {percent(curr_contribution$share,1)} OF THE {clean_number(curr_contribution$PEPFAR, 1) %>% toupper} PEPFAR VOLUNTARY MALE CIRCUMCISIONS THIS YEAR"),
          caption = glue("Source: {msd_source}
                         SI analytics: {paste(authors, collapse = '/')}
                      US Agency for International Development")) +
     si_style_ygrid()
 
-  si_save("Images/10_vmmc_contribution.png")  
+  # si_save("Images/10_vmmc_contribution.png")  
   si_save("Graphics/10_vmmc_contribution.svg")  
   
   
