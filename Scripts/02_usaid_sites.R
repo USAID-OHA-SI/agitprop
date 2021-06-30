@@ -168,4 +168,4 @@
           scale = 1.2, width = 10, height = 3) 
   
   ggsave("Graphics/02_usaid_facilities.svg",
-         scale = 1.2, width = 10, height = 3)
+         scale = 1.2, width = 10, height = 4)
