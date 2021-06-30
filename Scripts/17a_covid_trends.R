@@ -154,6 +154,7 @@
   
   df_viz %>% 
     filter(max_val > 1000,
+           !countryname %in% c("China", "Belize"),
            date >= "2020-03-01") %>% 
     ggplot(aes(date, daily_cases)) +
     annotate(geom = "rect",
