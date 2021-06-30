@@ -215,14 +215,13 @@
     mutate(fy = str_sub(period, end = -3)) %>% 
     filter(str_detect(period, "Q1"))
   
-  plot_mer_stringency <- function(ind_sel, n_countries = 16, y_scale = 1e-3, y_suffix = "k"){
+  plot_mer_stringency <- function(ind_sel, n_countries = 16){
     
     df_viz <- filter(df_viz, indicator == {ind_sel})
     
     #latest value for ordering
     lst_lrg <- df_viz %>% 
       filter(date == max(date)) %>% 
-      # slice_max(order_by = {{indicator}}, n = n_countries) %>% 
       slice_max(order_by = value, n = n_countries) %>% 
       pull(countryname)
     
@@ -238,7 +237,8 @@
       geom_vline(xintercept = df_dates$date, color = "white") +
       geom_rug(aes(color = color), sides="b", na.rm = TRUE) +
       facet_wrap(~countryname, scales = "free_y") +
-      scale_y_continuous(labels = number_format(1, scale = y_scale, suffix = y_suffix, big.mark = ",")) +
+      # scale_y_continuous(labels = number_format(accuracy = y_accuracy, scale = y_scale, suffix = y_suffix, big.mark = ",")) +
+      scale_y_dynamic() +
       scale_x_date(breaks = as.Date(df_dates$date), labels = df_dates$fy) +
       scale_color_identity() +
       labs(x = NULL, y = NULL,
@@ -253,9 +253,8 @@
   }
   
   plot_mer_stringency("TX_NEW")
+  plot_mer_stringency("HTS_TST", y_accuracy = .01, y_scale = 1e-6, y_suffix = "m")
   
   
-
-
 
   

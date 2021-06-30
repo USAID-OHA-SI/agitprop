@@ -51,6 +51,52 @@ clean_number <- function(x, digits = 0){
                    TRUE ~ glue("{x}"))
 }
 
+#' Dynamic format for scaling in plots
+#'
+#' @param x number
+#'
+#' @return
+#' @export
+
+dynamic_format <- function(x){
+  
+  max_x <- max(x, na.rm = TRUE)
+  
+  if (max_x >= 1e9) {
+    return(scales::number(x, scale = 1e-9, suffix = "B"))
+  } else if (max_x >= 1e6) {
+    return(scales::number(x, scale = 1e-6, suffix = "M"))
+  } else if (max_x >= 1e3) {
+    return(scales::number(x, scale = 1e-3, suffix = "K"))
+  } else if (max_x <3) {
+    return(scales::percent(x))
+  } else {
+    return(f(x))
+  }
+}
+
+
+#' Dynamic scaling format for scaling x axis in plots 
+#'
+#' @param ... 
+#'
+#' @return
+#' @export
+#'
+scale_x_dynamic <- function(...) {
+  ggplot2::scale_x_continuous(..., labels = dynamic_format)
+}
+
+#' Dynamic scaling format for scaling y axis in plots 
+#'
+#' @param ... 
+#'
+#' @return
+#' @export
+#'
+scale_y_dynamic <- function(...) {
+  ggplot2::scale_y_continuous(..., labels = dynamic_format)
+}
 
 #' Calculate Achievement
 #'
