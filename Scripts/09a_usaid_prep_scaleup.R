@@ -102,8 +102,12 @@
     identifypd() %>% 
     msd_period(period = .)
   
-  pd_breaks <- full_pds %>% 
+  fy_start <-  full_pds %>% 
     filter(str_detect(period, "Q1")) %>% 
+    pull()
+  
+  pd_breaks <- full_pds %>% 
+    # filter(str_detect(period, "Q(1|3)")) %>% 
     pull()
   
   df_viz <- df_prep %>% 
@@ -113,11 +117,11 @@
   df_viz %>% 
     ggplot(aes(period, value, group = fundingagency)) + 
     geom_area(fill = scooter, color = scooter, alpha = .2, size = 1, na.rm = TRUE) +
-    geom_vline(xintercept = pd_breaks, color = "white", 
+    geom_vline(xintercept = fy_start, color = "white", 
                size = .9, linetype = "dotted") +
     geom_point(shape = 21, fill = "white", color = scooter, stroke = 1.5, na.rm = TRUE) +
-    scale_y_continuous(label = clean_number, position = "right") +
-    scale_x_discrete(breaks = pd_breaks, labels = str_remove(pd_breaks, "Q1")) +
+    scale_y_continuous(label = clean_number, position = "right", expand = c(.01, .01)) +
+    scale_x_discrete(breaks = pd_breaks, labels = str_remove(pd_breaks, "FY[:digit:]{2}(?!Q1)")) +
     labs(x = NULL, y = NULL, 
          title = glue("USAID has initiated {clean_number(prep_cum, 1)} \\
                       onto PrEP this year across \\
@@ -130,7 +134,7 @@
                      US Agency for International Development")) +
     si_style_ygrid()
     
-  si_save("Images/09_prep_scaleup.png")  
+  si_save("Images/09a_prep_scaleup.png")  
   
-  si_save("Graphics/09_prep_scaleup.svg")  
+  si_save("Graphics/09a_prep_scaleup.svg")  
   
