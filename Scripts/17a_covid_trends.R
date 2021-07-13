@@ -3,7 +3,7 @@
 # PURPOSE:  COVID trends
 # LICENSE:  MIT
 # DATE:     2021-06-01
-# UPDATED: 
+# UPDATED:  2021-07-13
 
 # DEPENDENCIES ------------------------------------------------------------
   
@@ -152,10 +152,20 @@
     mutate(max_val = max(daily_cases, na.rm = TRUE)) %>% 
     ungroup()
   
-  df_viz %>% 
+  viz_ous <- df_viz %>% 
     filter(max_val > 1000,
-           !countryname %in% c("China", "Belize"),
-           date >= "2020-03-01") %>% 
+           !countryname %in% c("China"),
+           date >= "2020-03-01") %>%
+    group_by(countryname) %>% 
+    summarise(max_val = max(max_val, na.rm = TRUE)) %>% 
+    ungroup() %>% 
+    arrange(desc(max_val)) %>% 
+    slice_max(order_by = max_val, n = 30) %>% 
+    pull(countryname)
+    
+    
+  df_viz %>% 
+    filter(countryname %in% viz_ous) %>% 
     ggplot(aes(date, daily_cases)) +
     annotate(geom = "rect",
              xmin = as.Date("2021-01-01"),
@@ -164,28 +174,20 @@
              ymax = Inf,
              color = trolley_grey_light, alpha = .1) +
     geom_col(fill = burnt_sienna, alpha = .8, na.rm = TRUE) +
-    # geom_col(aes(y = -50, fill = bins), alpha = 1) +
-    # geom_col(aes(y = -10), fill = "white") +
     geom_hline(aes(yintercept = 0), size = 0.5, color = grey20k) +
     geom_line(aes(y = rollingavg_7day), color = si_palettes$burnt_siennas[7], #size = 1,
               na.rm = TRUE) +
     # geom_vline(xintercept = qtrs, size = 0.5, color = grey20k) +
+    geom_rug(aes(color = color), sides="b", na.rm = TRUE) +
     facet_wrap(~fct_reorder(countryname, daily_cases, max, na.rm = TRUE, .desc = TRUE), scales = "free_y") + 
     scale_y_continuous(label = comma) +
     scale_x_date(date_labels = "%b %y",
                  breaks = c(as.Date("2020-03-01"), today())) +
-    # scale_fill_manual(values = c("NA" = "#D9CDC3",
-    #                              "<1" = "#D3E8F0",
-    #                              "1-24" = "#FAE1AF",
-    #                              "25-49" = "#FDAC7A",
-    #                              "50-74" = "#F6736B",
-    #                              "75-84" = "#DA3C6A",
-    #                              "85-100" = "#A90773"),
-    #                   na.value = "#D9CDC3") +
+    scale_color_identity() +
     labs(x = NULL, y = NULL, fill = "Stringency Index",
          title = "MANY PEPFAR COUNTRIES EXPERIENCED COVID PEAKS DURING FY21Q2, LIKELY IMPACTING \nMER RESULTS AND COLLECTION",
          subtitle = "Limited to countries that ever experienced more than 1,000 daily cases",
-         caption = glue("Source: Source: JHU COVID-19 feed [{today()}]
+         caption = glue("Source: Source: JHU COVID-19 feed +  stringency index from Blavatnik School of Government at Oxford University [{today()}]
                       SI analytics: {paste(authors, collapse = '/')}
                      US Agency for International Development")) +
     si_style_nolines() +
@@ -196,7 +198,6 @@
           panel.spacing.x = unit(.5, "line"),
           panel.spacing.y = unit(.5, "line"))
   
-  #+ stringecy index from Blavatnik School of Government at Oxford University 
   
   si_save("Images/17_covid_ctry_trends.png")
   si_save("Graphics/17_covid_ctry_trends.svg")
