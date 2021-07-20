@@ -1,0 +1,142 @@
+## PROJECT: FY21Q1 REVIEW
+## AUTHOR:  A.Chafetz | USAID
+## PURPOSE: 95-95-95 Achievement
+## LICENSE: MIT
+## DATE:    2021-02-23
+## UPDATED: 
+
+
+# DEPENDENCIES ------------------------------------------------------------
+
+library(tidyverse)
+library(glamr)
+library(glitr)
+library(googlesheets4)
+library(extrafont)
+library(scales)
+library(tidytext)
+library(glue)
+
+
+# GLOBAL VARIABLES --------------------------------------------------------
+
+  #creds  
+    load_secrets()
+
+  #unaids data (saved for Mind the Gap)
+    gs_id <- as_sheets_id("1Ui1r5ynn9xYky86hHMO9kmdNZdWmANI5nAQ1N2b0wdM")
+
+    authors <- c("Aaron Chafetz", "Tim Essam")
+
+  #goal
+    goal <- .90
+    
+# IMPORT ------------------------------------------------------------------
+
+  df_unaids <- read_sheet(as_sheets_id(gs_id), "UNAIDS") %>%
+    dplyr::mutate(year = as.integer(year))
+  
+  df_impatt <- read_sheet(as_sheets_id(gs_id), "ARTshare")
+
+  pepfar_cntry <- get_outable(datim_user(), datim_pwd()) %>% 
+    filter(str_detect(operatingunit, "Region", negate = TRUE)) %>% 
+    pull(countryname)
+
+
+# MUNGE -------------------------------------------------------------------
+
+  
+  df_impatt <- df_impatt %>% 
+    rename(country = countryname) %>% 
+    filter(country %in% pepfar_cntry) %>% 
+    group_by(country) %>% 
+    summarise(PLHIV = sum(PLHIV, na.rm = TRUE)) %>% 
+    ungroup()
+    
+  df_unaids <- df_unaids %>% 
+    filter(year == max(year),
+           sex == "All",
+           country %in% pepfar_cntry)
+
+  df_viz <- df_unaids %>% 
+    left_join(df_impatt) %>% 
+    filter(country != "Vietnam") %>% 
+    mutate(country = case_when(country == "Democratic Republic of the Congo" ~ "DRC",
+                               country == "Dominican Republic" ~ "DR", 
+                               TRUE ~ country),
+           indicator = recode(indicator, "On ART" = "On Treatment"),
+           PLHIV = ifelse(is.na(PLHIV), 0, PLHIV))
+  
+  df_viz <- df_viz %>% 
+    group_by(country) %>% 
+    mutate(value = round(value, 2),
+           grouping = case_when(value == min(value, na.rm = TRUE) ~ indicator),
+           grouping = case_when(min(value, na.rm = TRUE) >= goal ~ "A_Achieved", #"Z_Achieved",
+                                #country == "Eswatini" ~ "Z_Achieved",
+                                #country == "Zambia" & indicator == "Virally Suppressed" ~ NA_character_,
+                                TRUE ~ grouping),
+           gap = case_when(value == min(value, na.rm = TRUE) & value < goal ~ goal-value,
+                           value == min(value, na.rm = TRUE) & grouping == "A_Achieved" ~ value-goal,
+                           TRUE ~ 0),
+           achv = case_when(value == min(value, na.rm = TRUE) & value < goal ~ value),
+           dot_color = case_when(grouping == "Known Status" ~ old_rose,
+                                 grouping == "On Treatment" ~ golden_sand,
+                                 grouping == "Virally Suppressed" ~ scooter,
+                                 grouping == "A_Achieved" ~ genoa,
+                                 # grouping == "Z_Achieved" ~ genoa,
+                                 TRUE ~ trolley_grey)) %>% 
+    fill(grouping, .direction = "downup") %>% 
+    ungroup() %>% 
+    # group_by(grouping, indicator) %>%
+    # mutate(rank = dense_rank(value)) %>%
+    # ungroup() %>%
+    mutate(gap_bar = case_when(value < goal ~ value),
+           country = reorder_within(country, gap, grouping, max, na.rm = TRUE))
+
+
+# PLOT --------------------------------------------------------------------
+
+
+df_viz %>% 
+  ggplot(aes(value, country, color = dot_color)) +
+  geom_vline(xintercept = goal, linetype = "dashed") + 
+  geom_linerange(aes(xmin = gap_bar, xmax = goal), color = "gray90",
+                 size = 2.5, na.rm = TRUE) +
+  geom_point(size = 4, alpha = .8, na.rm = TRUE) +
+  scale_y_reordered(limits = rev) +
+  scale_x_continuous(label = percent) +
+  scale_color_identity() +
+  facet_grid(grouping~indicator, scales = "free_y", space = "free_y") +
+  labs(x = NULL, y = NULL, color = NULL,
+       caption = glue("Source: UNAIDS 90-90-90 15+ (2020)
+                      SI analytics: {paste(authors, collapse = '/')}
+                     US Agency for International Development")) +
+  si_style_xgrid() +
+  theme(strip.text.y = element_blank(),
+        panel.spacing = unit(.5, "lines"))
+  
+  si_save("Graphics/UNAIDS_Epi_Progress.svg")
+  si_save("Images/UNAIDS_Epi_Progress90.png")
+  si_save("Images/UNAIDS_Epi_Progress95.png")
+  
+  
+  
+  df_viz %>% 
+    ggplot(aes(value, reorder_within(country, gap, grouping, max, na.rm = TRUE), color = dot_color)) +
+    geom_vline(xintercept = goal, linetype = "dashed") + 
+    geom_linerange(aes(xmin = 0, xmax = value), color = "gray90",
+                   size = 2.5, na.rm = TRUE) +
+    geom_point(size = 4, alpha = .8, na.rm = TRUE) +
+    scale_y_reordered() +
+    scale_x_continuous(label = percent) +
+    scale_color_identity() +
+    facet_grid(grouping~indicator, scales = "free_y", space = "free_y") +
+    labs(x = NULL, y = NULL, color = NULL,
+         caption = glue("Source: UNAIDS 90-90-90 15+ (2020)
+                      SI analytics: {paste(authors, collapse = '/')}
+                     US Agency for International Development")) +
+    si_style_xgrid() +
+    theme(strip.text.y = element_blank(),
+          panel.spacing = unit(.5, "lines"))
+  
+  si_save("Images/UNAIDS_Epi_Progress95_achv.png")
