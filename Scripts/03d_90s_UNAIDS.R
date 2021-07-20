@@ -1,9 +1,9 @@
-## PROJECT: FY21Q1 REVIEW
+## PROJECT: agitprop
 ## AUTHOR:  A.Chafetz | USAID
 ## PURPOSE: 95-95-95 Achievement
 ## LICENSE: MIT
 ## DATE:    2021-02-23
-## UPDATED: 
+## UPDATED: 2021-07-20
 
 
 # DEPENDENCIES ------------------------------------------------------------
@@ -29,7 +29,7 @@ library(glue)
     authors <- c("Aaron Chafetz", "Tim Essam")
 
   #goal
-    goal <- .90
+    goal <- .9
     
 # IMPORT ------------------------------------------------------------------
 
@@ -71,32 +71,33 @@ library(glue)
     group_by(country) %>% 
     mutate(value = round(value, 2),
            grouping = case_when(value == min(value, na.rm = TRUE) ~ indicator),
-           grouping = case_when(min(value, na.rm = TRUE) >= goal ~ "A_Achieved", #"Z_Achieved",
+           grouping = case_when(min(value, na.rm = TRUE) >= goal ~ "Achieved", #"Z_Achieved",
                                 #country == "Eswatini" ~ "Z_Achieved",
                                 #country == "Zambia" & indicator == "Virally Suppressed" ~ NA_character_,
                                 TRUE ~ grouping),
            gap = case_when(value == min(value, na.rm = TRUE) & value < goal ~ goal-value,
-                           value == min(value, na.rm = TRUE) & grouping == "A_Achieved" ~ value-goal,
+                           value == min(value, na.rm = TRUE) & grouping == "Achieved" ~ 1-value,
                            TRUE ~ 0),
            achv = case_when(value == min(value, na.rm = TRUE) & value < goal ~ value),
            dot_color = case_when(grouping == "Known Status" ~ old_rose,
                                  grouping == "On Treatment" ~ golden_sand,
                                  grouping == "Virally Suppressed" ~ scooter,
-                                 grouping == "A_Achieved" ~ genoa,
+                                 grouping == "Achieved" ~ genoa,
                                  # grouping == "Z_Achieved" ~ genoa,
                                  TRUE ~ trolley_grey)) %>% 
     fill(grouping, .direction = "downup") %>% 
     ungroup() %>% 
-    # group_by(grouping, indicator) %>%
-    # mutate(rank = dense_rank(value)) %>%
-    # ungroup() %>%
     mutate(gap_bar = case_when(value < goal ~ value),
            country = reorder_within(country, gap, grouping, max, na.rm = TRUE))
 
 
 # PLOT --------------------------------------------------------------------
 
-
+epi_ctrl_cnt <- df_viz %>% 
+    filter(grouping == "Achieved") %>% 
+    distinct(country) %>% 
+    nrow()
+    
 df_viz %>% 
   ggplot(aes(value, country, color = dot_color)) +
   geom_vline(xintercept = goal, linetype = "dashed") + 
@@ -108,6 +109,7 @@ df_viz %>%
   scale_color_identity() +
   facet_grid(grouping~indicator, scales = "free_y", space = "free_y") +
   labs(x = NULL, y = NULL, color = NULL,
+       title = glue("AS OF 2020, {epi_ctrl_cnt} PEPFAR COUNTRIES HAVE ACHIEVED EPIDEMIC CONTROL"),
        caption = glue("Source: UNAIDS 90-90-90 15+ (2020)
                       SI analytics: {paste(authors, collapse = '/')}
                      US Agency for International Development")) +
@@ -116,27 +118,4 @@ df_viz %>%
         panel.spacing = unit(.5, "lines"))
   
   si_save("Graphics/UNAIDS_Epi_Progress.svg")
-  si_save("Images/UNAIDS_Epi_Progress90.png")
-  si_save("Images/UNAIDS_Epi_Progress95.png")
   
-  
-  
-  df_viz %>% 
-    ggplot(aes(value, reorder_within(country, gap, grouping, max, na.rm = TRUE), color = dot_color)) +
-    geom_vline(xintercept = goal, linetype = "dashed") + 
-    geom_linerange(aes(xmin = 0, xmax = value), color = "gray90",
-                   size = 2.5, na.rm = TRUE) +
-    geom_point(size = 4, alpha = .8, na.rm = TRUE) +
-    scale_y_reordered() +
-    scale_x_continuous(label = percent) +
-    scale_color_identity() +
-    facet_grid(grouping~indicator, scales = "free_y", space = "free_y") +
-    labs(x = NULL, y = NULL, color = NULL,
-         caption = glue("Source: UNAIDS 90-90-90 15+ (2020)
-                      SI analytics: {paste(authors, collapse = '/')}
-                     US Agency for International Development")) +
-    si_style_xgrid() +
-    theme(strip.text.y = element_blank(),
-          panel.spacing = unit(.5, "lines"))
-  
-  si_save("Images/UNAIDS_Epi_Progress95_achv.png")
