@@ -3,7 +3,7 @@
 # PURPOSE:  USAID achievement
 # LICENSE:  MIT
 # DATE:     2021-05-19
-# UPDATED: 
+# UPDATED:  2021-08-04
 
 # DEPENDENCIES ------------------------------------------------------------
   
@@ -30,6 +30,8 @@
   
   #msd_source <- msd_period()
   
+  load_secrets()
+  
 # IMPORT ------------------------------------------------------------------
   
   df <- si_path() %>% 
@@ -51,6 +53,9 @@
            indicator %in% ind_sel,
            standardizeddisaggregate == "Total Numerator",
            fiscal_year == curr_fy) %>% 
+    resolve_knownissues(store_excl = TRUE)
+  
+  df_achv <- df_achv %>% 
     group_by(fiscal_year, indicator) %>% 
     summarise(across(c(cumulative, targets), sum, na.rm = TRUE)) %>% 
     ungroup() %>% 
@@ -98,7 +103,7 @@
     labs(x= NULL, y = NULL,
          title = "SELECT USAID INDICATOR PERFORMANCE ACROSS ALL COUNTRIES",
          subtitle = glue("as of {curr_pd}, goal of being at around {percent(trgt_rng)} of the FY target"),
-         caption = glue("Source: {msd_source}
+         caption = glue("Excludes MER Known Issues | Source: {msd_source}
                         SI analytics: {paste(authors, collapse = '/')}
                      US Agency for International Development")) +
     si_style_nolines() +
