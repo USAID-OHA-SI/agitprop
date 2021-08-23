@@ -3,14 +3,14 @@
 # PURPOSE:  treatment scale up since PEPFAR start
 # LICENSE:  MIT
 # DATE:     2021-05-25
-# UPDATED:  2021-05-26
+# UPDATED:  2021-08-23
 
 # DEPENDENCIES ------------------------------------------------------------
   
   library(tidyverse)
   library(glitr)
   library(glamr)
-  library(ICPIutilities)
+  library(gophr)
   library(extrafont)
   library(scales)
   library(tidytext)
@@ -26,6 +26,8 @@
   
   authors <- c("Aaron Chafetz", "Tim Essam")
   
+  #source info
+  msd_source <- source_info()
 
 # IMPORT ------------------------------------------------------------------
   
@@ -41,11 +43,6 @@
 
 # MUNGE -------------------------------------------------------------------
 
-  #source info
-  msd_source <- df %>% 
-    identifypd() %>% 
-    msd_period(period = .)
-  
   curr_qtr <- identifypd(df, "quarter")
   curr_fy <- df %>% 
     identifypd() %>% 
@@ -64,9 +61,9 @@
     filter(fundingagency %in% c("USAID", "PEPFAR"))
   
   df_kp <- df_kp %>% 
-    reshape_msd() %>% 
+    rename(period = fiscal_year, value = cumulative) %>% 
+    mutate(period = str_replace(period, "20", "FY")) %>% 
     arrange(indicator, period) %>% 
-    select(-period_type) %>% 
     mutate(source = "MSD")
 
   df_kp <- df_kp %>% 

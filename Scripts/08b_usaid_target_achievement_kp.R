@@ -54,7 +54,7 @@
     group_by(fiscal_year, indicator) %>% 
     summarise(across(c(cumulative, targets), sum, na.rm = TRUE)) %>% 
     ungroup() %>% 
-    calc_achv(curr_qtr)
+    adorn_achievement(curr_qtr)
   
 
   df_viz <- df_achv %>%
