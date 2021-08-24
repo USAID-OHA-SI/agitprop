@@ -19,7 +19,6 @@
   library(glue)
   library(lubridate)
   library(COVIDutilities)
-  library(Wavelength)
 
 
 # GLOBAL VARIABLES --------------------------------------------------------
