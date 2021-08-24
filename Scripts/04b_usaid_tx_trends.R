@@ -3,14 +3,14 @@
 # PURPOSE:  treatment scale up since PEPFAR start
 # LICENSE:  MIT
 # DATE:     2021-05-14
-# UPDATED:  2021-05-24
+# UPDATED:  2021-08-23
 
 # DEPENDENCIES ------------------------------------------------------------
   
   library(tidyverse)
   library(glitr)
   library(glamr)
-  library(ICPIutilities)
+  library(gophr)
   library(extrafont)
   library(scales)
   library(tidytext)
@@ -43,7 +43,7 @@
 
   #source info
   curr_pd <- identifypd(df)
-  msd_source <- msd_period(period = curr_pd)
+  msd_source <- source_info()
   
   df_tx <- df %>% 
     bind_rows(df_arch) %>% 
@@ -55,9 +55,9 @@
     ungroup()
   
   df_tx <- df_tx %>% 
-    reshape_msd() %>% 
+    rename(period = fiscal_year, value = cumulative) %>% 
+    mutate(period = str_replace(period, "20", "FY")) %>% 
     arrange(indicator, period) %>% 
-    select(-period_type) %>% 
     mutate(source = "MSD")
 
   df_tx <- df_tx %>% 
@@ -82,7 +82,7 @@
     geom_col(aes(alpha = bar_alpha, fill = ind_label),
              position = "identity") +
     geom_hline(yintercept = seq(2e6, 6e6, 2e6), color = "white") +
-    scale_y_continuous(labels = unit_format(1, unit = "M", scale = 1e-6),
+    scale_y_continuous(labels = label_number_si(),
                        position = "right", expand = c(.005, .005)) +
     scale_x_continuous(expand = c(.005, .005),
                        n.breaks = unique(df_tx$period) %>% length())+
@@ -95,8 +95,6 @@
                      US Agency for International Development")) +
     si_style_nolines()
 
-  si_save("Images/04bb_tx_trends_usaid.png")
-  
   si_save("Graphics/04b_tx_trends_usaid.svg")
   
   #data point for context

@@ -3,14 +3,14 @@
 # PURPOSE:  90s/95s contribution 
 # LICENSE:  MIT
 # DATE:     2021-05-12
-# UPDATED:  2021-06-28
+# UPDATED:  2021-08-23
 
 # DEPENDENCIES ------------------------------------------------------------
   
   library(tidyverse)
   library(glitr)
   library(glamr)
-  library(ICPIutilities)
+  library(gophr)
   library(extrafont)
   library(scales)
   library(tidytext)
@@ -144,7 +144,6 @@ source("Scripts/99_utilities.R")
   
   
   
-  si_save("Images/03b_usaid_mer_90s.png") 
   si_save("Graphics/03b_usaid_mer_90s.svg") 
   
 

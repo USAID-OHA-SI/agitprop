@@ -3,7 +3,7 @@
 # PURPOSE:  site count of USAID supported facilities
 # LICENSE:  MIT
 # DATE:     2021-05-11
-# UPDATED:  2021-05-13
+# UPDATED:  2021-08-23
 # NOTE:     adapted from USAID-OHA-SI/findyourbeach (linked below)
 # URL:      https://github.com/USAID-OHA-SI/find_your_beach/blob/master/Scripts/01_query_datim.R
 
@@ -12,7 +12,7 @@
   library(tidyverse)
   library(glitr)
   library(glamr)
-  library(ICPIutilities)
+  library(gophr)
   library(extrafont)
   library(scales)
   library(tidytext)
@@ -29,7 +29,7 @@
 
   authors <- c("Aaron Chafetz", "Tim Essam")
   
-  curr_fy <- 2021
+  curr_fy <- source_info(return = "fiscal_year")
   datim_cy <- curr_fy - 1 
 
 
@@ -38,7 +38,7 @@
   #uids and levels for each country
   ctry_list <- get_outable(datim_user(), datim_pwd()) %>% 
     select(operatingunit, operatingunit_uid, countryname, 
-           psnu_lvl = prioritization, facility_lvl)
+           psnu_lvl, facility_lvl)
   
   #expand each country by the API type for pmap
   full_list <- expand_grid(countryname = ctry_list$countryname,
@@ -164,8 +164,6 @@
           panel.background = element_rect(fill = "#e6e7e84f"),
           panel.border = element_rect(color = trolley_grey, fill = NA))
   
-  si_save("Images/02_usaid_facilities.png",
-          scale = 1.2, width = 10, height = 3) 
-  
+
   ggsave("Graphics/02_usaid_facilities.svg",
          scale = 1.2, width = 10, height = 4)

@@ -3,14 +3,14 @@
 # PURPOSE:  scale up of prep
 # LICENSE:  MIT
 # DATE:     2021-05-20
-# UPDATED:  2021-06-29
+# UPDATED:  2021-08-23
 
 # DEPENDENCIES ------------------------------------------------------------
   
   library(tidyverse)
   library(glitr)
   library(glamr)
-  library(ICPIutilities)
+  library(gophr)
   library(extrafont)
   library(scales)
   library(tidytext)
@@ -61,8 +61,9 @@
     summarise(across(starts_with("qtr"), sum, na.rm = TRUE)) %>% 
     ungroup() %>% 
     reshape_msd() %>% 
+    mutate(value = na_if(value, 0)) %>% 
     select(-period_type) %>% 
-    arrange(period)
+    arrange(period) 
   
 
 
@@ -98,9 +99,7 @@
   
 # VIZ ---------------------------------------------------------------------
   
-  msd_source <- df %>% 
-    identifypd() %>% 
-    msd_period(period = .)
+  msd_source <- source_info()
   
   fy_start <-  full_pds %>% 
     filter(str_detect(period, "Q1")) %>% 
@@ -123,7 +122,7 @@
     scale_y_continuous(label = clean_number, position = "right", expand = c(.01, .01)) +
     scale_x_discrete(breaks = pd_breaks, labels = str_remove(pd_breaks, "FY[:digit:]{2}(?!Q1)")) +
     labs(x = NULL, y = NULL, 
-         title = glue("USAID has initiated {clean_number(prep_cum, 1)} \\
+         title = glue("USAID has initiated {clean_number(prep_cum, 0)} \\
                       onto PrEP this year across \\
                       {filter(df_cntry_cnt, fiscal_year == max(fiscal_year)) %>% pull()} \\
                       countries, up from {filter(df_cntry_cnt, fiscal_year == 2017) %>% pull()} \\

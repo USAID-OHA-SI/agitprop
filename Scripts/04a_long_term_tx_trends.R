@@ -3,14 +3,14 @@
 # PURPOSE:  treatment scale up since PEPFAR start
 # LICENSE:  MIT
 # DATE:     2021-05-14
-# UPDATED:  2021-06-28
+# UPDATED:  2021-08-23
 
 # DEPENDENCIES ------------------------------------------------------------
   
   library(tidyverse)
   library(glitr)
   library(glamr)
-  library(ICPIutilities)
+  library(gophr)
   library(extrafont)
   library(scales)
   library(tidytext)
@@ -50,9 +50,7 @@
 # MUNGE -------------------------------------------------------------------
 
   #source info
-  msd_source <- df %>% 
-    identifypd() %>% 
-    msd_period(period = .)
+  msd_source <- source_info()
   
   df_tx <- df %>% 
     bind_rows(df_arch) %>% 
@@ -142,7 +140,5 @@
     select(indicator, value) %>% 
     mutate(value = clean_number(value, 1))
   
-  si_save("Images/04_tx_trends.png")
-  
-  si_save("Graphics/04_tx_trends.svg")
+  si_save("Graphics/04a_tx_trends.svg")
   
