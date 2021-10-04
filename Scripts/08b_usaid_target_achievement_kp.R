@@ -3,14 +3,14 @@
 # PURPOSE:  USAID achievement
 # LICENSE:  MIT
 # DATE:     2021-05-25
-# UPDATED: 
+# UPDATED:  2021-08-23
 
 # DEPENDENCIES ------------------------------------------------------------
   
   library(tidyverse)
   library(glitr)
   library(glamr)
-  library(ICPIutilities)
+  library(gophr)
   library(extrafont)
   library(scales)
   library(tidytext)
@@ -42,7 +42,7 @@
   curr_fy <- identifypd(df, "year")
   curr_qtr <- identifypd(df, "quarter")
   curr_pd <- identifypd(df)
-  msd_source <-  msd_period(period = curr_pd)
+  msd_source <-  source_info()
   trgt_rng <- 1*(curr_qtr/4)
   
   
@@ -54,7 +54,7 @@
     group_by(fiscal_year, indicator) %>% 
     summarise(across(c(cumulative, targets), sum, na.rm = TRUE)) %>% 
     ungroup() %>% 
-    calc_achv(curr_qtr)
+    adorn_achievement(curr_qtr)
   
 
   df_viz <- df_achv %>%

@@ -3,7 +3,7 @@
 #' requires having si_path setup from glamr
 #' 
 #' @param type Type of MSD (OU_IM, PSNU, PSNU_IM, NAT_SUBNAT)
-#' @param period can provide period from ICPIutilities::identifypd(), or it will run if NULL
+#' @param period can provide period from gophr::identifypd(), or it will run if NULL
 #'
 #' @return FY00Q0t MSD
 #' @export
@@ -21,8 +21,8 @@ msd_period <- function(type = "OU_IM", period = NULL){
    
    if(is.null(period)){
      period <- file %>% 
-      ICPIutilities::read_msd() %>% 
-      ICPIutilities::identifypd()
+      gophr::read_msd() %>% 
+      gophr::identifypd()
      
    }
      
@@ -101,7 +101,7 @@ scale_y_dynamic <- function(...) {
 #' Calculate Achievement
 #'
 #' @param df MSD data frame
-#' @param curr_qtr current quarter, using ICPIutilities::identifypd(df, "quarter"), default = 4
+#' @param curr_qtr current quarter, using gophr::identifypd(df, "quarter"), default = 4
 #' @param add_color add OHA achievement colors, default = TRUE
 #'
 #' @return
@@ -109,7 +109,7 @@ scale_y_dynamic <- function(...) {
 #'
 #' @examples
 #' \dontrun{
-#' qtr <- ICPIutilities::identifypd(df, "quarter")
+#' qtr <- gophr::identifypd(df, "quarter")
 #' df <- calc_achv(df, qtr)}
 calc_achv <- function(df, curr_qtr = 4, add_color = TRUE){
   df_achv <- df %>% 

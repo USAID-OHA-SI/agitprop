@@ -3,14 +3,14 @@
 # PURPOSE:  prep share of pepfar PEPFAR start
 # LICENSE:  MIT
 # DATE:     2021-06-29
-# UPDATED:  
+# UPDATED:  2021-08-23
 
 # DEPENDENCIES ------------------------------------------------------------
   
   library(tidyverse)
   library(glitr)
   library(glamr)
-  library(ICPIutilities)
+  library(gophr)
   library(extrafont)
   library(scales)
   library(tidytext)
@@ -42,9 +42,7 @@
 # MUNGE -------------------------------------------------------------------
 
   #source info
-  msd_source <- df %>% 
-    identifypd() %>% 
-    msd_period(period = .)
+  msd_source <- source_info()
   
   curr_qtr <- identifypd(df, "quarter")
   curr_fy <- df %>% 
@@ -65,9 +63,9 @@
     filter(fundingagency %in% c("USAID", "PEPFAR"))
   
   df_prep <- df_prep %>% 
-    reshape_msd() %>% 
+    rename(period = fiscal_year, value = cumulative) %>% 
+    mutate(period = str_replace(period, "20", "FY")) %>% 
     arrange(indicator, period) %>% 
-    select(-period_type) %>% 
     mutate(source = "MSD")
 
   df_prep <- df_prep %>% 
@@ -91,7 +89,7 @@
                   size = .9, na.rm = TRUE) +
     geom_text(aes(label = percent(share, 1)), alpha = 1, na.rm = TRUE, vjust = -1, 
               family = "Source Sans Pro SemiBold", color = trolley_grey) +
-    scale_y_continuous(labels = unit_format(1, unit = "K", scale = 1e-3),
+    scale_y_continuous(labels = label_number_si(),
                        position = "right", expand = c(.005, .005)) +
     scale_x_continuous(expand = c(.005, .005), n.breaks = unique(df_viz$period) %>% length())+
     scale_alpha_identity() +
@@ -104,7 +102,6 @@
                      US Agency for International Development")) +
     si_style_ygrid()
 
-  # si_save("Images/09b_prep_share_usaid.png")
   si_save("Graphics/09b_prep_share_usaid.svg")
 
 

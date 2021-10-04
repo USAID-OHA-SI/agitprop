@@ -3,14 +3,14 @@
 # PURPOSE:  MMD
 # LICENSE:  MIT
 # DATE:     2021-05-14
-# UPDATED:  2021-06-29
+# UPDATED:  2021-08-23
 
 # DEPENDENCIES ------------------------------------------------------------
   
   library(tidyverse)
   library(glitr)
   library(glamr)
-  library(ICPIutilities)
+  library(gophr)
   library(extrafont)
   library(scales)
   library(tidytext)
@@ -136,8 +136,7 @@
   
 # VIZ ---------------------------------------------------------------------
   
-  msd_source <- identifypd(df) %>% 
-    msd_period(period = .)
+  msd_source <- source_info()
   
   df_mmd_agency %>% 
     ggplot(aes(period, tx_mmd)) + 
@@ -149,7 +148,7 @@
     # facet_wrap(~otherdisaggregate_md) +
     facet_wrap(~otherdisaggregate) +
     scale_fill_identity() +
-    scale_y_continuous(labels = unit_format(1, unit = "M", scale = 1e-6),
+    scale_y_continuous(labels = label_number_si(),
                        position = "right", expand = c(.005, .005)) +
     labs(x = NULL, y = NULL,
          title = "USAID HAS WORKED TO ENSURE MORE PATIENTS HAVE ACCESS TO MULTI MONTH DISPENSING (MMD)",
@@ -163,9 +162,7 @@
           # strip.text.x = element_markdown(family = "Source Sans Pro SemiBold", size = 13)
           strip.text.x = element_text(family = "Source Sans Pro SemiBold", size = 13))
   
-  
-  si_save("Images/11a_mmd_trends.png")
-  
+
   si_save("Graphics/11a_mmd_trends.svg")  
   
   
@@ -180,7 +177,7 @@
     facet_wrap(~fct_reorder(country_lab, tx_curr, max, .desc = TRUE)) +
     scale_y_continuous(label = percent, 
                        breaks = seq(0, 1, .5)) +
-    scale_x_discrete(breaks = c("FY19Q1", "FY20Q1", "FY21Q1")) +
+    scale_x_discrete(breaks = c("FY20Q1", "FY20Q3", "FY21Q1", "FY21Q3")) +
     scale_color_identity(aesthetics = c("color","fill")) +
     labs(x = NULL, y = NULL,
          title = glue("IN {max(df_mmd_ou$period)}, USAID HAS {top$share} OF TREATMENT PATIENTS ON +3 MONTHS OF MMD IN THE LARGEST {top$n} COUNTRIES"),
@@ -198,8 +195,6 @@
           panel.grid.minor.y = element_line(color = "#E8E8E8"),
           strip.text = element_markdown())
 
-  si_save("Images/11b_mmd_trends_by_country.png")  
-  
   si_save("Graphics/11b_mmd_trends_by_country.svg")  
 
  
