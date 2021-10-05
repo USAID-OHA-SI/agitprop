@@ -3,7 +3,7 @@
 # PURPOSE:  MMD
 # LICENSE:  MIT
 # DATE:     2021-05-14
-# UPDATED:  2021-08-23
+# UPDATED:  2021-10-05
 
 # DEPENDENCIES ------------------------------------------------------------
   
@@ -46,7 +46,8 @@
     group_by(fiscal_year, countryname, indicator, otherdisaggregate) %>% 
     summarise(across(starts_with("qtr"), sum, na.rm = TRUE)) %>% 
     ungroup() %>% 
-    reshape_msd()
+    reshape_msd() %>% 
+    filter(value > 0)
   
   #create group for o3mo and o6mo via reshaping for plotting
   df_mmd <- df_mmd %>% 
