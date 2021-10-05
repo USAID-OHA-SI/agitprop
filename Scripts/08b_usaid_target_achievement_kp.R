@@ -3,7 +3,7 @@
 # PURPOSE:  USAID achievement
 # LICENSE:  MIT
 # DATE:     2021-05-25
-# UPDATED:  2021-08-23
+# UPDATED:  2021-10-05
 
 # DEPENDENCIES ------------------------------------------------------------
   
@@ -76,7 +76,8 @@
            val_lab = ifelse(indicator == ind_sel[1],
                             glue("Results - {clean_number(cumulative)}\nTargets - {clean_number(targets)}"),
                             glue("{clean_number(cumulative)}\n{clean_number(targets)}")),
-           full_lab = glue("{ind_lab}\n\n{val_lab}")) %>% 
+           full_lab = glue("{ind_lab}\n\n{val_lab}"),
+           achievement = case_when(status == "achv_round" ~ achievement)) %>% 
     arrange(indicator) %>% 
     mutate(full_lab = fct_inorder(full_lab))
   
