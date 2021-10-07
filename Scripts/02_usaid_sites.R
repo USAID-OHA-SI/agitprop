@@ -3,7 +3,7 @@
 # PURPOSE:  site count of USAID supported facilities
 # LICENSE:  MIT
 # DATE:     2021-05-11
-# UPDATED:  2021-08-23
+# UPDATED:  2021-10-07
 # NOTE:     adapted from USAID-OHA-SI/findyourbeach (linked below)
 # URL:      https://github.com/USAID-OHA-SI/find_your_beach/blob/master/Scripts/01_query_datim.R
 
@@ -115,7 +115,7 @@
   #date of API
   api_date <- outputfile %>% 
     file.info() %>% 
-    pull(ctime) %>% 
+    pull(mtime) %>% 
     format("%Y-%m-%d")
   
   df_kpi <- df_sites %>% 
