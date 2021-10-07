@@ -3,7 +3,7 @@
 # PURPOSE:  treatment scale up since PEPFAR start
 # LICENSE:  MIT
 # DATE:     2021-05-14
-# UPDATED:  2021-08-23
+# UPDATED:  2021-10-07
 
 # DEPENDENCIES ------------------------------------------------------------
   
@@ -43,13 +43,15 @@
 
   #source info
   curr_pd <- identifypd(df)
+  curr_fy <- identifypd(df, "year")
   msd_source <- source_info()
   
   df_tx <- df %>% 
     bind_rows(df_arch) %>% 
     filter(fundingagency == "USAID",
            indicator %in% c("TX_CURR", "TX_NEW"),
-           standardizeddisaggregate == "Total Numerator") %>% 
+           standardizeddisaggregate == "Total Numerator",
+           fiscal_year <= curr_fy) %>% 
     group_by(fiscal_year, fundingagency, indicator) %>% 
     summarise(across(cumulative, sum, na.rm = TRUE)) %>% 
     ungroup()
