@@ -3,7 +3,7 @@
 # PURPOSE:  MMD
 # LICENSE:  MIT
 # DATE:     2021-05-14
-# UPDATED:  2021-10-05
+# UPDATED:  2021-10-12
 
 # DEPENDENCIES ------------------------------------------------------------
   
@@ -183,8 +183,7 @@
     labs(x = NULL, y = NULL,
          title = glue("IN {max(df_mmd_ou$period)}, USAID HAS {top$share} OF TREATMENT PATIENTS ON +3 MONTHS OF MMD IN THE LARGEST {top$n} COUNTRIES"),
          subtitle = "South Africa, representing a third of USAID's treatment portfolio, has been excluded",
-         caption = glue("MMD 3 months or more = 3-5 months and 6 months or more  
-                        Source: {msd_source}
+         caption = glue("MMD 3 months or more = 3-5 months and 6 months or more  | Source: {msd_source}
                         SI analytics: {paste(authors, collapse = '/')}
                      US Agency for International Development")) +
     si_style_ygrid() +
