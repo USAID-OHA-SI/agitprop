@@ -3,14 +3,14 @@
 # PURPOSE:  tracking VMMC contributions
 # LICENSE:  MIT
 # DATE:     2021-05-20
-# UPDATED:  2021-06-29
+# UPDATED:  2021-10-12
 
 # DEPENDENCIES ------------------------------------------------------------
   
   library(tidyverse)
   library(glitr)
   library(glamr)
-  library(ICPIutilities)
+  library(gophr)
   library(extrafont)
   library(scales)
   library(tidytext)
@@ -22,7 +22,7 @@
 
 # GLOBAL VARIABLES --------------------------------------------------------
   
-  authors <- c("Aaron Chafetz", "Tim Essam")
+  authors <- c("Aaron Chafetz", "Tim Essam", "Ben Kasdan")
   
 # IMPORT ------------------------------------------------------------------
   
@@ -47,20 +47,21 @@
     group_by(fiscal_year, fundingagency) %>% 
     summarise(across(cumulative, sum, na.rm = TRUE)) %>% 
     ungroup() %>% 
-    reshape_msd() %>% 
-    select(-period_type)
+    mutate(period = glue("FY{str_sub(fiscal_year, -2)}")) %>% 
+    filter(cumulative > 0)
   
   df_vmmc <- df_vmmc %>% 
     filter(fundingagency %in% c("USAID", "PEPFAR")) %>% 
     group_by(period) %>% 
-    mutate(share = case_when(fundingagency == "USAID" ~ value/lag(value)),
-           total = case_when(fundingagency == "PEPFAR" ~ value)) %>% 
+    mutate(share = case_when(fundingagency == "USAID" ~ cumulative/lag(cumulative)),
+           total = case_when(fundingagency == "PEPFAR" ~ cumulative)) %>% 
     ungroup()
   
 
   curr_contribution <- df_vmmc %>% 
     select(-share, -total) %>% 
-    pivot_wider(names_from = fundingagency) %>% 
+    pivot_wider(names_from = fundingagency,
+                values_from = cumulative) %>% 
     filter(period == max(period)) %>%  
     summarise(across(c(PEPFAR, USAID), sum, na.rm = TRUE)) %>% 
     mutate(share = USAID/PEPFAR)
@@ -91,12 +92,10 @@
   
 # VIZ ---------------------------------------------------------------------
   
-  msd_source <- df %>% 
-    identifypd() %>% 
-    msd_period(period = .)
+  msd_source <- source_info()
   
   df_vmmc %>% 
-    ggplot(aes(period, value)) + 
+    ggplot(aes(period, cumulative)) + 
     geom_col(aes(fill = fundingagency, alpha = fundingagency), position = "identity") +
     geom_text(aes(label = percent(share, 1)), na.rm = TRUE, vjust = -1, 
               family = "Source Sans Pro SemiBold", color = trolley_grey) +
