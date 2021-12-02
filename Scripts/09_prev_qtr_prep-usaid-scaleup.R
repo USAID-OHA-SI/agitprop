@@ -22,7 +22,7 @@
 
 # GLOBAL VARIABLES --------------------------------------------------------
   
-  authors <- c("Aaron Chafetz", "Tim Essam", "Karisham Srikanth")
+  authors <- c("Aaron Chafetz", "Tim Essam", "Karishma Srikanth")
   
   curr_fy <- source_info(return = "fiscal_year")
   curr_pd <- source_info(return = "period")

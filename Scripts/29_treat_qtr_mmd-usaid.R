@@ -21,7 +21,7 @@
   
 # GLOBAL VARIABLES --------------------------------------------------------
   
-  authors <- c("Aaron Chafetz", "Tim Essam", "Karisham Srikanth")
+  authors <- c("Aaron Chafetz", "Tim Essam", "Karishma Srikanth")
 
   msd_source <- source_info()
   
