@@ -1,8 +1,9 @@
-# PURPOSE: LP Funding - Global Planning Meeting
+# PROJECT: agitprop
 # AUTHOR: K Srikanth | SI
+# PURPOSE: LP Funding trends
 # LICENSE: MIT
-# DATE: 2021-11-09
-# NOTES: 
+# DATE: 2021-12-02
+# NOTES: adapted from catch-22/Scripts/2021115_Global Planning Meeting/gpm_localpartner_funding.R
 
 # LOCALS & SETUP ============================================================================
 
