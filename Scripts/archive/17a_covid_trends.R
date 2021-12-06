@@ -3,7 +3,7 @@
 # PURPOSE:  COVID trends
 # LICENSE:  MIT
 # DATE:     2021-06-01
-# UPDATED:  2021-08-24
+# UPDATED:  2021-12-06
 
 # DEPENDENCIES ------------------------------------------------------------
   
@@ -29,9 +29,9 @@
     qtrs <- seq.Date(as.Date("2019-10-01"), today(), by = "3 months")
 
   #current quarter
-    curr_qtr <- source_info()
-    curr_qtr_start <- source_info(return = "period") %>% convert_qtr_to_date() %>% as.Date()
-    curr_qtr_end <- source_info(return = "period") %>% convert_qtr_to_date() %>% as.Date() %m+% months(3)
+    curr_qtr <- source_info(return = "period")
+    curr_qtr_start <- curr_qtr %>% convert_qtr_to_date() %>% as.Date()
+    curr_qtr_end <- curr_qtr %>% convert_qtr_to_date() %>% as.Date() %m+% months(3)
     
 # IMPORT ------------------------------------------------------------------
   
@@ -85,11 +85,11 @@
     geom_rug(aes(color = color), sides="b", na.rm = TRUE) +
     facet_wrap(~fct_reorder(countryname, daily_cases, max, na.rm = TRUE, .desc = TRUE), scales = "free_y") + 
     scale_y_continuous(label = comma) +
-    scale_x_date(date_labels = "%b %y",
+    scale_x_date(date_labels = "%b '%y",
                  breaks = c(as.Date("2020-03-01"), today())) +
     scale_color_identity() +
     labs(x = NULL, y = NULL, fill = "Stringency Index",
-         title = "MANY PEPFAR COUNTRIES EXPERIENCED COVID PEAKS DURING FY21Q3, LIKELY IMPACTING \nMER RESULTS AND COLLECTION",
+         title = glue("EVEN AT {curr_qtr}, COVID IS STILL LOOMING LARGE IN MANY PEPFAR COUNTRIES, LIKELY IMPACTING \nMER RESULTS AND COLLECTION"),
          subtitle = "Limited to countries that ever experienced more than 1,000 daily cases",
          caption = glue("Source: Source: JHU COVID-19 feed +  stringency index from Blavatnik School of Government at Oxford University [{today()}]
                       SI analytics: {paste(authors, collapse = '/')}
