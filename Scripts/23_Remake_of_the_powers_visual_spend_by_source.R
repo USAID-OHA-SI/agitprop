@@ -34,16 +34,18 @@ library(nrsmisc)
 
 # GLOBAL VARIABLES --------------------------------------------------------
   
-  authors <- c("Aaron Chafetz", "Tim Essam", "Ben Kasdan")
+  authors <- c("Aaron Chafetz", "Tim Essam", "Ben Kasdan", "Karishma Srikanth")
   
 
 # IMPORT ------------------------------------------------------------------
   
-  #Source: PEPFAR Spotlight (public)-I created a smaller data set from that for just FY20 ER
-funding<-read_csv("Data/USAID-PEPFAR fund graph.csv") %>%
-  dplyr::select( - c(X2))
+id<- googlesheets4::as_sheets_id('11CRsy-77xtgxVWVhqUQEb7zxTThvPvuAVb0_WJLD734')
+funding <- googlesheets4::read_sheet(id, "Machine Readable FY21Q4") 
+
+#funding<-read_csv("Data/USAID-PEPFAR fund graph.csv") %>%
+ # dplyr::select( - c(X2))
 df1<-funding%>%
-  pivot_longer(cols= `2004` : `2020`,
+  pivot_longer(cols= `2004` : `2021`,
     names_to = "Fiscal Year",
     values_to= "Funding")%>%
   dplyr::mutate(`color` = `Source`)%>%
@@ -51,8 +53,10 @@ df1<-funding%>%
   mutate(color = ifelse(`Source` == "USAID: HQ", "#2057a7", 
                            ifelse(`Source`=="USAID: Countries","#e07653",
                                   ifelse(`Source`=="USAID: GF/UNAIDS","#1e87a5","Other"))))
+df1<-df1%>%
+  mutate(`Funding`=(`Funding`/1e9))
 #Adjust FY labels
-my_labels <- seq(2004, 2020, 1) %>% 
+my_labels <- seq(2004, 2021, 1) %>% 
   substr(., 3, 4) %>% paste0("FY", .)
 # Keep every 4th label but replace those in between with blanks
 cust_labels <- nrsmisc::every_nth(my_labels, 4, inverse = T)
@@ -73,7 +77,6 @@ df2<- df1 %>%
                                ifelse(`Source`=="USAID: GF/UNAIDS","#1e87a5","Other"))))
 
 v <- df2 %>% 
-  #ggplot(data = d_bg, colour = "grey", alpha = .2)%>%
   ggplot(aes(`Fiscal Year`,`Funding`, n, fill=`color`))+
 geom_col(aes(y = total_n), fill = "#8C8985", alpha = .2)+
   geom_col()+
@@ -84,18 +87,13 @@ geom_col(aes(y = total_n), fill = "#8C8985", alpha = .2)+
   scale_y_continuous(labels = unit_format(.1, unit = "B"))+
   scale_x_discrete(labels = cust_labels)+
   
- # theme(axis.text = element_blank(), 
-  #      plot.title = element_markdown(family = "Source Sans Pro Regular",size = 14/.pt),face="bold",
-   #     plot.caption=element_text(hjust = 0)) +
-  
-  # title = "IN FY20, USAID PEPFAR SPENT 65% OF THE BUDGET ON PREVENTION, SOCIO-ECONOMIC SUPPORT, AND TREATMENT",
-  labs(
+ labs(
    title =  "USAID Funding for HIV Programming FY2004-2020 (USD $B)",
-   caption = glue("Source: USAID Phoenix System Data as of May 2021
+   caption = glue("Source: USAID FY21Q4 O&O Report for S/GAC 15 November 2021
                   SI analytics: {paste(authors, collapse = '/')}
               US Agency for International Development")) +
   
   si_style_nolines()+
   theme(legend.position = "none")
 si_save("23_Powerfunding_trends.png")
-si_save("23_Powerfunding_trends.svg")
+si_save(path="~/GitHub/agitprop","23_Powerfunding_trends.svg")
