@@ -3,7 +3,7 @@
 # PURPOSE:  treatment scale up since PEPFAR start
 # LICENSE:  MIT
 # DATE:     2021-11-30
-# UPDATED:  2021-12-01
+# UPDATED:  2021-12-06
 # NOTE:     adapted from agitprop/04a_usaid_tx_trends.R
 
 # DEPENDENCIES ------------------------------------------------------------
@@ -101,6 +101,14 @@
     mutate(bar_alpha = ifelse(fiscal_year == max(fiscal_year) & curr_qtr != 4, .6, 1),
            ind_label = case_when(indicator == "TX_CURR" ~ "Currently receiving antiretroviral therapy",
                                  TRUE ~ "Newly enrolled on antiretroviral therapy"))
+  #add usaid share
+  df_tx_viz <- df_tx_viz %>% 
+    pivot_wider(names_from = fundingagency) %>% 
+    mutate(usaid_share = USAID/PEPFAR) %>%
+    pivot_longer(c(USAID, PEPFAR), names_to = "fundingagency",
+                 values_drop_na = TRUE) %>% 
+    mutate(usaid_share = case_when(fundingagency == "USAID" ~ usaid_share)) %>% 
+    arrange(indicator, fundingagency, fiscal_year)
   
   #data point for context
   df_curr_val <- df_tx_viz %>% 
@@ -115,14 +123,14 @@
   v <- df_tx_viz %>% 
     filter(indicator == "TX_CURR") %>% 
     ggplot(aes(fiscal_year, value)) +
-    geom_col(aes(alpha = bar_alpha, fill = fundingagency),
+    geom_col(aes(alpha = bar_alpha, fill = fct_rev(fundingagency)),
              position = "identity") +
     geom_hline(yintercept = seq(3e6, 18e6, 3e6), color = "white") +
     scale_y_continuous(labels = unit_format(1, unit = "M", scale = 1e-6),
                        breaks =  seq(3e6, 18e6, 3e6),
                        position = "right", expand = c(.005, .005)) +
     scale_x_continuous(expand = c(.005, .005))+
-    scale_fill_manual(values = c(moody_blue_light, moody_blue)) +
+    scale_fill_manual(values = c("PEPFAR" = moody_blue_light, "USAID" = moody_blue)) +
     scale_alpha_identity() +
     coord_cartesian(clip = "off") +
     labs(x = NULL, y = NULL, fill = NULL,
@@ -169,4 +177,13 @@
   si_save("Graphics/26_treat_qtr_historic-txcurr-trends.svg")
   
  
+  v_ann +
+    geom_text(data = . %>% filter(fiscal_year != max(fiscal_year)),
+              aes(label = percent(usaid_share, 1)), na.rm = TRUE,
+              family = "Source Sans Pro", color = "white", vjust = 1) +
+    geom_text(data = . %>% filter(fiscal_year == max(fiscal_year)),
+              aes(label = percent(usaid_share, 1)), na.rm = TRUE,
+              family = "Source Sans Pro", color = moody_blue, vjust = -.8)
+  
+  si_save("Graphics/27_treat_qtr_historic-txcurr-trends-share.svg")
   
