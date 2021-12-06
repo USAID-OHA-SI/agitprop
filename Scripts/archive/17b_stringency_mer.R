@@ -3,7 +3,7 @@
 # PURPOSE:  COVID Stringency Index + MER Trends
 # LICENSE:  MIT
 # DATE:     2021-05-14
-# UPDATED:  2021-08-24
+# UPDATED:  2021-10-05
 
 # DEPENDENCIES ------------------------------------------------------------
 
@@ -32,9 +32,8 @@
   load_secrets()
   
   #quarter starts (for viz)
-  qtrs <- seq.Date(as.Date("2019-01-01"), as.Date(ox_end), by = "3 months")
+  qtrs <- seq.Date(as.Date("2019-01-01"), as.Date(curr_qtr_end), by = "3 months")
 
-  rm(ox_end, ox_start)
   
 # IMPORT ------------------------------------------------------------------
 
@@ -73,7 +72,8 @@
     group_by(fiscal_year, indicator, countryname) %>% 
     summarise(across(starts_with("qtr"), sum, na.rm = TRUE), .groups = "drop") %>% 
     reshape_msd() %>% 
-    select(-period_type)
+    select(-period_type) %>% 
+    filter(!(str_detect(period, "FY22") & value == 0))
 
   #adjust quarters to dates for working with COVID data
   df_mer <- df_mer %>% 
@@ -155,6 +155,7 @@
       geom_rug(aes(color = color), sides="b", na.rm = TRUE) +
       facet_wrap(~countryname, scales = "free_y") +
       # scale_y_continuous(labels = number_format(accuracy = y_accuracy, scale = y_scale, suffix = y_suffix, big.mark = ",")) +
+      # scale_y_continuous(label = label_number_si()) +
       scale_y_dynamic() +
       scale_x_date(breaks = as.Date(df_dates$date), labels = df_dates$fy) +
       expand_limits(y = 1) +

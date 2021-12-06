@@ -3,9 +3,10 @@
 # PURPOSE:  Epi control trend graphs
 # LICENSE:  MIT
 # DATE:     2021-07-19
-# UPDATED:
+# UPDATED:  2021-09-30
 # NOTE:     Created based on request from FO "2 visuals for AHOP deck" -- 2021-07-16
 # DATA NOTE: Data id --> "1p-fN3qDJ138uSQ4e63EYgEXrop8lhbO1"
+# TODO: Rewrite to use the miindthegap pacakge to pull the data
 
 # DEPENDENCIES ------------------------------------------------------------
 
@@ -198,7 +199,7 @@
          caption =  glue("{source} [{date_pulled}]
                         SI analytics: {paste(authors, collapse = '/')}
                      US Agency for International Development")) +
-    si_style_ygrid() +
+    si_style_ygrid(facet_space = 0.5) +
     scale_x_continuous(breaks = seq(1990, 2025, 5)) +
     coord_cartesian(expand = T, clip = "off") +
     theme(axis.text.y = element_markdown(), 
@@ -207,8 +208,8 @@
                                                  margin = margin(5.5, 5.5, 5.5, 5.5))) 
   
   ggsave("Graphics/24b_HIV_epi_control_select_ous.pdf", 
-         width = 10, height = 7, 
-         dpi = "retina", useDingbats = F)  
+         width = 10, height = 5.625, 
+         dpi = "retina", useDingbats = F, scale = 1.35)  
 
   
     
