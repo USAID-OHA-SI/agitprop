@@ -71,7 +71,7 @@
     group_by(fiscal_year, fundingagency, operatingunit, indicator) %>% 
     summarise(across(starts_with("qtr"), sum, na.rm = T), .groups = "drop") %>% 
     reshape_msd() %>% 
-    select(-period_type) %>% 
+    dplyr::select(-period_type) %>% 
     pivot_wider(names_from = indicator, values_from = value) %>% 
     group_by(fundingagency, operatingunit) %>% 
     mutate(TX_CURR_LAG2 = lag(TX_CURR, 2, order_by = period),
@@ -127,6 +127,14 @@
            )) %>% 
     pull()
   
+  period_labels3 <- df_tx_ou %>% 
+    filter(!str_detect(period, "FY17"),
+           str_detect(period, "Q4")) %>% 
+    dplyr::select(period) %>% 
+    distinct(period) %>% 
+    mutate(period = str_sub(period, 1, 4)) %>% 
+    pull()
+  
   # Nigeria
   df_tx_ou %>% 
     filter(fundingagency == "USAID",
@@ -145,20 +153,25 @@
   # OUs
   df_tx_ou %>% 
     filter(fundingagency == "USAID",
-           operatingunit != "Angola") %>% 
+           operatingunit %ni% c("Angola", "Asia Region", "Ethiopia", 
+                                "WAR", "WHR", "Vietnam", "Cote d'Ivoire",
+                                "South Sudan", "DR"),
+           !str_detect(period, "FY17"), 
+           str_detect(period, "Q4$")) %>% 
     ggplot(aes(x = period, y = VLC)) +
     geom_col(fill = scooter) +
     geom_hline(yintercept = 0, size = .3, color = usaid_black) +
     geom_text(aes(label = percent(VLC, 1)),
                size = 0, vjust = -.50, color = trolley_grey) +
-    scale_x_discrete(labels = period_labels2) +
+    scale_x_discrete(labels = period_labels3) +
     scale_y_continuous(labels = percent, position = "right") +
-    facet_wrap(~operatingunit, ncol = 5) +
+    facet_wrap(~operatingunit, ncol = 4) +
     labs(x = "", y = "") +
     si_style_ygrid() +
-    theme(axis.text.y = element_text(family = "Source Sans Pro", size = 6),
-          axis.text.x = element_markdown(family = "Source Sans Pro", size = 4, face = "bold", color = usaid_black),
-          strip.text = element_text(family = "Source Sans Pro", size = 10, color = usaid_black))
+    theme(axis.line.x = element_line(size = .2),
+          axis.text.y = element_text(family = "Source Sans Pro", size = 7, face = "bold", color = usaid_black),
+          axis.text.x = element_markdown(family = "Source Sans Pro", size = 12, face = "bold", color = usaid_black),
+          strip.text = element_text(family = "Source Sans Pro", size = 12, color = usaid_black))
   
   ggsave(file.path(dir_graphics, "USAID - OU VLC Trend.png"),
          plot = last_plot(),
@@ -171,26 +184,28 @@
   # Global 
   df_tx_global %>% 
     filter(fundingagency == "USAID",
-           !str_detect(period, "FY17")) %>% 
+           !str_detect(period, "FY17"),
+           str_detect(period, "Q4$")) %>% 
     ggplot(aes(x = period, y = VLC)) +
     geom_col(fill = scooter) +
     geom_hline(yintercept = 0, size = 1, color = usaid_black) +
     geom_text(aes(label = percent(VLC, 1)),
-              size = 3, vjust = -.50, color = usaid_black) +
-    scale_x_discrete(labels = period_labels) +
-    scale_y_continuous(labels = percent, position = "right") +
+              size = 8, vjust = -.2, fontface = "bold", color = usaid_black) +
+    scale_x_discrete(labels = period_labels3) +
+    scale_y_continuous(labels = percent, position = "right", expand = c(0, 0.08)) +
     labs(x = "", y = "") +
     si_style_nolines() +
     theme(axis.text.y = element_blank(),
-          axis.text.x = element_markdown(family = "Source Sans Pro",
-                                         size = 8, color = usaid_black))
+          axis.text.x = element_text(family = "Source Sans Pro",
+                                     size = 20, face = "bold",
+                                     color = usaid_black))
   
   ggsave(file.path(dir_graphics, "USAID - VLC Trend.png"),
          plot = last_plot(),
          path = NULL,
          scale = 1,
-         width = 5,
-         height = 6,
+         width = 6,
+         height = 5,
          dpi = 320)
   
   
