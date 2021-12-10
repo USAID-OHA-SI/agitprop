@@ -126,6 +126,8 @@
   }
   
   hiv_free_all %>% 
+    mutate(label_txt = label_number_si()(hiv_free),
+           label_tot = label_number_si(0.01)(tot_hiv_free)) %>% 
     ggplot(aes(x = fiscal_year)) +
     geom_col(aes(y = cumsum(hiv_free)), fill = trolley_grey_light, alpha = 0.75) +
     geom_col(aes(y = hiv_free), fill = scooter, alpha = 1) +
@@ -135,10 +137,12 @@
                size = 1,
                linetype = "dotted") +
     geom_vline(xintercept = curr_fy + 0.5, size = 0.5, linetype = "dotted", color = grey50k)+
-    geom_text(aes(y = hiv_free, label = comma(hiv_free)), size = 12/.pt,
+    geom_text(aes(y = hiv_free, label = label_txt), size = 12/.pt,
               family = "Source Sans Pro SemiBold", vjust = 1.5, color = "white") +
-    geom_text(data = . %>% filter(fiscal_year == curr_fy), aes(y = tot_hiv_free, x = curr_fy +1, label = comma(tot_hiv_free)), size = 12/.pt,
-              family = "Source Sans Pro SemiBold", vjust = 1.5, color = "white") +
+    geom_text(data = . %>% filter(fiscal_year == curr_fy), aes(y = tot_hiv_free, x = curr_fy +1, 
+              label = label_tot), size = 12/.pt,
+              family = "Source Sans Pro SemiBold", 
+              vjust = 1.5, color = "white") +
     si_style_xline() +
     scale_fill_identity() +
     scale_x_continuous(breaks = x_breaks_w_tot,
@@ -153,9 +157,7 @@
     theme(axis.text.y = element_blank())
   
   si_save("Images/12_hiv_free_babies_v2.png", scale = 1.1)
-  
 
-# CUMULATIVE? -------------------------------------------------------------
 
     
     
