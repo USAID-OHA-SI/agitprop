@@ -56,11 +56,7 @@ library(rnaturalearth)
 # MUNGING ---- 
 
   df_nat %>% 
-    filter(str_detect(indicator, "POP_EST")) %>% 
-    distinct(indicator, standardizeddisaggregate)
-  
-  df_nat %>% 
-    filter(str_detect(indicator, "VMMC_TOTALCIRC_NAT")) %>% 
+    filter(indicator %in% c("POP_EST", "VMMC_TOTALCIRC_NAT")) %>% 
     distinct(indicator, standardizeddisaggregate)
   
   df_pop <- df_nat %>% 
@@ -95,7 +91,7 @@ library(rnaturalearth)
       cntry_label = paste0(
         "<span>**",
         countryname, "**</span><br/>",
-        "<span style='display:table; padding:15px; background-color:#e07653'>",
+        "<span style='display:table; padding:5px; background-color:#e07653'>",
         comma(POP_EST), "</span> Males 15+<br/>",
         "<span style='color:#e07653'>**",
         percent(1 - VMMC_COV, 1),
@@ -129,7 +125,7 @@ library(rnaturalearth)
     coord_flip() +
     labs(x = "", y = "", 
          #title = "Zeroing in on VMMC",
-         caption = glue("Source: {source_info()} - Produced by OHA//SIEI/SI Core Analytics, {format(Sys.Date(), '%Y-%m-%d')}")) +
+         caption = glue("Source: PEPFAR {source_info()} NAT-SUBNAT\n% Gap = (POP_EST - VMMC_TOTALCIRC_NAT) / POP_EST\nNote: National and historical VMMC data is only available for these 3 countries\nProduced by USAID's Office of HIV-AIDS/SIEI/SI Core Analytics, {format(Sys.Date(), '%Y-%m-%d')}")) +
     si_style_nolines() +
     theme(axis.text.x = element_blank(),
           axis.text.y = element_markdown(size = 20))
