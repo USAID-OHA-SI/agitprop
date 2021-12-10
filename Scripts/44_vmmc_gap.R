@@ -112,21 +112,27 @@ library(rnaturalearth)
   df_vmmc %>% 
     ggplot(aes(x = reorder(countryname, VMMC_COV), y = VMMC_COV)) +
     geom_col(fill = burnt_sienna) +
-    geom_hline(yintercept = 0, size = 1, color = usaid_black) +
-    geom_text(aes(label = percent(VMMC_COV, 1)), hjust = 1.2,
+    geom_hline(yintercept = 0, size = 1, color = grey90k) +
+    geom_text(aes(label = percent(VMMC_COV, 1)),
+              hjust = 1.2,
               size = 20, color = "white") +
-   scale_x_discrete(labels = cntry_labels) +
+    annotate(geom = "curve", 
+             x = 1.3, y = .4,
+             xend = 2, yend = .328,
+             curvature = .3, size = 1, color = grey90k,
+             arrow = arrow(length = unit(5, "pt"))) +
+    annotate(geom = "text",
+             x = 1.0, y = .42,
+             label = "% of males 15+\ncircumcised to date",
+             size = 8, color = grey90k, hjust = 1) +
+    scale_x_discrete(labels = cntry_labels) +
     coord_flip() +
-    labs(x = "", y = "") +
+    labs(x = "", y = "", 
+         #title = "Zeroing in on VMMC",
+         caption = glue("Source: {source_info()} - Produced by OHA//SIEI/SI Core Analytics, {format(Sys.Date(), '%Y-%m-%d')}")) +
     si_style_nolines() +
     theme(axis.text.x = element_blank(),
           axis.text.y = element_markdown(size = 20))
   
-  ggsave(file.path(dir_graphics, "USAID - OU VMMC Gap.png"),
-         plot = last_plot(),
-         path = NULL,
-         scale = 1,
-         width = 10,
-         height = 5.625,
-         dpi = 320)
+  si_save(file.path(dir_graphics, "USAID - OU VMMC Gap.png"))
   
