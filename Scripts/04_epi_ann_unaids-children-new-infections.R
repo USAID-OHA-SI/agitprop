@@ -21,6 +21,7 @@
   library(glue)
   library(googlesheets4)
   library(mindthegap)
+  library(geomtextpath)
 
 
 # GLOBAL VARIABLES --------------------------------------------------------
@@ -71,6 +72,7 @@
   plot_title <- glue("NEW HIV INFECTIONS AMONG CHILDREN DECLINED BY MORE THAN HALF ({percent({BAN}, 1)}) FROM 2010 TO 2020")
 
   epi_viz %>% 
+    mutate(label = "New HIV Infections\n0 - 14 year olds") %>% 
   ggplot(aes(x = year, y = value)) +
   geom_area(data = . %>% filter(year < 2011), fill = "#C6D5E9", alpha = 0.85) +
   geom_area(data = . %>% filter(year >= 2010), fill = "#d8e3f0", alpha = 0.85) +
@@ -80,7 +82,7 @@
   geom_point(data = epi_viz_decade, color = "white", size = 5) +
   geom_point(data = . %>% filter(year %in% c(2010, 2020)), aes(y = value), shape = 1, size = 5, color = grey90k) +
   annotate(geom = "text", x = 1998, y = 5e5, label = c("New HIV Infections\n0-14 year olds"), hjust = 0, vjust = 1,
-           family = "Source Sans Pro SemiBold", color = denim, size = 14/.pt) +
+            family = "Source Sans Pro SemiBold", color = denim, size = 14/.pt) +
   annotate(geom = "text", x = 2015, y = 2.5e5, label = paste(percent(BAN, 1), " decline"),
            family = "Source Sans Pro SemiBold", color = grey90k, size = 16/.pt, hjust = -0.2) +
     annotate("curve",
@@ -89,6 +91,8 @@
                            type = "closed"),
              curvature = -.4,
              color = suva_grey) +  
+  # geom_textpath(aes(label = label), vjust = 1.25, hjust = 1, color = denim, 
+  #                family = "Source Sans Pro", fontface = 2, size = 14/.pt) +
   scale_y_continuous(label = ~ label_number_si()(.), position = "right") +
   scale_x_continuous(breaks = seq(1990, 2024, 5)) +
   si_style_ygrid(text_scale = 1.15) +
