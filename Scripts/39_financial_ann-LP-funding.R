@@ -3,6 +3,7 @@
 # PURPOSE: LP Funding trends
 # LICENSE: MIT
 # DATE: 2021-12-02
+# Updated: 2021-12-13 (request to make COP21 bar old_rose_light)
 # NOTES: adapted from catch-22/Scripts/2021115_Global Planning Meeting/gpm_localpartner_funding.R
 
 # LOCALS & SETUP ============================================================================
@@ -20,6 +21,7 @@ library(here)
 library(patchwork)
 library(googlesheets4)
 library(janitor)
+library(glue)
 library(ggnewscale)
 
 # Set paths  
@@ -71,7 +73,7 @@ df_funding <- df %>%
   mutate(target = Budget *0.7) %>% 
   pivot_longer(cols = Budget:LPBudget, names_to = "category", values_to = "value") %>% 
   mutate(fill_color = ifelse(category == "LPBudget", old_rose, trolley_grey_light),
-         fill_color = ifelse(cop %in% c("COP22", "COP23") & category == "LPBudget", old_rose_light, fill_color)) 
+         fill_color = ifelse(cop %in% c("COP21", "COP22", "COP23") & category == "LPBudget", old_rose_light, fill_color)) 
 
 #VIZ ===============================================================================
 
@@ -86,7 +88,8 @@ title_info <- df_funding %>%
 
 
 df_funding %>% 
-  mutate(share = ifelse(category == "LPBudget", share, NA)) %>% 
+  mutate(share = ifelse(category == "LPBudget", share, NA),
+         proj_label = ifelse(category == "LPBudget" & str_detect(cop, "(21|22|23)"), "Projected", NA_character_)) %>% 
   #mutate(share = ifelse(partner_type == "Local", share, NA)) %>% 
   ggplot(aes(cop, value)) +
   geom_col(aes(fill = fill_color),
@@ -99,6 +102,7 @@ df_funding %>%
   #   n.breaks = unique(df_funding$cop) %>% length())+
   geom_text(aes(label = percent(share, 1), vjust = -1, 
                 size = 12/.pt, family = "Source Sans Pro")) +
+  geom_text(aes(label = proj_label, y = 0.5e8), size = 12/.pt, family = "Source Sans Pro", color = "white")+
   scale_fill_identity() +
   scale_color_identity() +
   scale_alpha_identity() +
@@ -116,3 +120,4 @@ df_funding %>%
                      US Agency for International Development"))
 
 si_save("Graphics/39_financial_ann.svg")
+si_save("Images/39_financial_ann.png")
