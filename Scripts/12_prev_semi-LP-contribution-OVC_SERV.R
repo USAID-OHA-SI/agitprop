@@ -64,10 +64,10 @@ df_partner <- read_sheet(sheet_id, sheet = "MechID-PartnerType", range = "A:B") 
 
 # MUNGE -------------------------------------------------------------------
 
-df_hts <- df %>% 
+df_ovc <- df %>% 
   bind_rows(df_arch) %>% 
   filter(fundingagency == "USAID",
-         indicator %in% c("HTS_TST_POS"),
+         indicator %in% c("OVC_SERV"),
          standardizeddisaggregate == "Total Numerator",
          fiscal_year <= curr_fy) %>% 
   group_by(mech_code) %>% 
@@ -84,41 +84,42 @@ df_hts <- df %>%
 
 # PLOT --------------------------------------------------------------------
 
-min_yr <- df_hts %>% 
+min_yr <- df_ovc %>% 
   select(fiscal_year) %>% 
   filter(fiscal_year == min(fiscal_year)) %>% 
   distinct(fiscal_year) %>% pull()  
 
-tst_latest <- pull_figures(df_hts, "HTS_TST_POS", "Local", cumulative)
-tst_max <- pull_figures(df_hts, "HTS_TST_POS", "Local", total)
-tst_share <- pull_figures(df_hts, "HTS_TST_POS", "Local", share)
+ovc_latest <- pull_figures(df_ovc, "OVC_SERV", "Local", cumulative)
+ovc_max <- pull_figures(df_ovc, "OVC_SERV", "Local", total)
+ovc_share <- pull_figures(df_ovc, "OVC_SERV", "Local", share)
+
 
 #Testing
-df_hts %>% 
-  filter(indicator == "HTS_TST_POS", partner_type == "Local") %>% 
+df_ovc %>% 
+  filter(indicator == "OVC_SERV", partner_type == "Local") %>% 
   ggplot(aes(x = fiscal_year)) +
-  geom_col(aes(y = total), fill = scooter_med, alpha = 0.85) +
-  geom_col(aes(y = cumulative), fill = scooter) +
-  geom_hline(yintercept = seq(0.5e6, 1.5e6, 0.5e6), color = "white", size = 0.5) +
+  geom_col(aes(y = total), fill = burnt_sienna_light, alpha = 0.85) +
+  geom_col(aes(y = cumulative), fill = burnt_sienna) +
+  geom_hline(yintercept = seq(2e6, 6e6, 2e6), color = "white", size = 0.5) +
   geom_label(aes(y = cumulative, label = percent(share, 1)), 
              size = 12/.pt, family = "Source Sans Pro", vjust = 1.15) +
-  geom_label(aes(y = tst_max, x = curr_fy, label = "Total HTS_TST_POS"),
+  geom_label(aes(y = ovc_max, x = curr_fy, label = "Total OVC_SERV"),
              size = 12/.pt, family = "Source Sans Pro", color = grey90k, vjust = 1, alpha = 0.85) +
-  geom_text(aes(y = tst_latest, x = curr_fy, label = "Local Partner\n Contribution"), 
+  geom_text(aes(y = ovc_latest, x = curr_fy, label = "Local Partner\n Contribution"), 
             color = grey10k,
             size = 12/.pt, family = "Source Sans Pro", color = grey90k, vjust = 2) +
-  scale_y_continuous(labels = label_number_si(accuracy = 0.1), position = "right", lim = c(0, 1.75e6)) +
+  scale_y_continuous(labels = label_number_si(), position = "right", lim = c(0, 6.5e6)) +
   scale_x_continuous(breaks = seq(min_yr, curr_fy, 1)) +
   si_style_xline(text_scale = 1.25) +
   coord_cartesian(expand = F) +
-  labs(x = NULL, y = NULL, 
-       title = glue("LOCAL PARTNERS CONTINUE TO SUPPORT TESTING EFFORTS, ACCOUNTING FOR {label_number_si()(tst_latest)} POSITIVE TEST RESULTS
-                    NEARLY 1/2 THE TOTAL SHARE OF POSITIVE TEST RESULTS IN {curr_fy}"),
+  labs(x = NULL, y = NULL,
+       title = glue("LOCAL PARTNERS CONTINUE TO EXPAND SERVICES TO ORPHANS AND VULNERABLE CHILDREN, ACCOUNTING FOR {label_number_si(0.01)(ovc_latest)} OVC_SERV
+                    MORE THAN 1/2 OF THE USAID TOTAL IN {curr_fy}"),
        caption = glue("Source: {msd_source}
                       SI analytics: {paste(authors, collapse = '/')}
                      US Agency for International Development"))
 
-si_save("Images/24_treat_qtr_LP_contribution_HTS_TST_POS.png", scale = 1.25)
+si_save("Images/12_prev_semi_LP-contribution-OVC_SERV.png", scale = 1.25)
 
 
 
