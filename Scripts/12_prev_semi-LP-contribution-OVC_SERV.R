@@ -113,8 +113,8 @@ df_ovc %>%
   si_style_xline(text_scale = 1.25) +
   coord_cartesian(expand = F) +
   labs(x = NULL, y = NULL,
-       title = glue("LOCAL PARTNERS CONTINUE TO EXPAND SERVICES TO ORPHANS AND VULNERABLE CHILDREN, ACCOUNTING FOR {label_number_si(0.01)(ovc_latest)} OVC_SERV
-                    MORE THAN 1/2 OF THE USAID TOTAL IN {curr_fy}"),
+       title = glue("LOCAL PARTNERS CONTINUE TO EXPAND SERVICES TO ORPHANS AND VULNERABLE CHILDREN, 
+       ACCOUNTING FOR {label_number_si(0.01)(ovc_latest)} OVC_SERV -- MORE THAN 1/2 OF THE USAID TOTAL IN {curr_fy}"),
        caption = glue("Source: {msd_source}
                       SI analytics: {paste(authors, collapse = '/')}
                      US Agency for International Development"))
