@@ -83,14 +83,28 @@
   # all breaks if needed
   cust_breaks <- c(paste0("FY", rep(seq(18, 21, 1), each = 2), "Q", seq(2, 4, 2)))
   
+  ou_count <- df_cxca %>% 
+    filter(period == "FY21Q4", operatingunit != "USAID") %>% 
+    distinct(operatingunit) %>% 
+    tally() %>% pull()
+  
  a <-  df_cxca %>% filter(operatingunit == "USAID",  period != "FY18Q2") %>% 
-    ggplot(aes(x = period, y = CXCA_SCRN)) +
-    geom_col(fill = golden_sand_light) +
+   mutate(positivity = CXCA_SCRN_POS/CXCA_SCRN) %>% 
+    ggplot(aes(x = period)) +
+    geom_col(aes(y = CXCA_SCRN), fill = golden_sand_light) +
+    geom_col(aes(y = CXCA_SCRN_POS), fill = golden_sand) +
+    geom_text(aes(y = CXCA_SCRN_POS, label = percent(positivity, 1)),
+              size = 12/.pt, family = "Source Sans Pro SemiBold", vjust = -0.5) +
     facet_wrap(~ou_order, scales = "free_y") +
     si_style_xline() +
    geom_hline(yintercept = seq(1e5, 3e5, 1e5), color = "white", size = 0.5) +
    scale_y_continuous(position = "right", labels = label_number_si()) +
-   labs(x = NULL, y = NULL)
+   theme(strip.text = element_blank()) +
+   coord_cartesian(expand = F) +
+   labs(x = NULL, y = NULL,
+        title = glue("USAID SUPPORTED {ou_count} OPERATING UNITS IN EXPANDING CERVICAL CANCER SCREENING IN {curr_fy}"),
+        subtitle = "TREATMENT RATES HAVE INCREASED STEADILY IN RECENT YEARS")
+        
   
   
   b <- df_cxca %>% 
@@ -100,15 +114,22 @@
     geom_area(fill = golden_sand_light)+
     geom_line(color = golden_sand, size = 2) +
     # geom_textpath(aes(label = "Treatment rate"), hjust = 0.95, vjust = -1, include_line = F)+
-    geom_text(aes(label = "Treatment rate", y = 1, x = "FY21Q2"), vjust = -1) +
+    geom_text(aes(label = "Treatment rate", y = 1, x = "FY21Q2"), vjust = -1,
+              family = "Source Sans Pro", size = 12/.pt) +
     geom_hline(yintercept = 1, size = 0.25, linetype = "dotted") +
-    geom_label(aes(label = percent(tx_rate, 1))) +
+    geom_label(aes(label = percent(tx_rate, 1)), size = 12/.pt, family = "Source Sans Pro SemiBold") +
     si_style_xline() +
     # coord_cartesian(expand = F) +
     scale_x_discrete(expand = expansion(add = 0.25))+
     scale_y_continuous(expand = expansion(mult = 0), lim = c(0, 1.5)) +
     labs(x = NULL, y = NULL) +
-    theme(axis.text = element_blank())
+    theme(axis.text = element_blank()) +
+    labs(caption = glue("Source: {msd_source}
+                      SI analytics: {paste(authors, collapse = '/')}
+                     US Agency for International Development"))
 
-  cowplot::plot_grid(a, b, ncol = 1, align = "hv", axis = "bt", rel_heights = c(5, 2))
- 
+  a / b + plot_layout(heights = c(6, 2))
+  
+  si_save("Graphics/25_test_semi_CXCA-screening-trends.svg", scale = 1.2)  
+  
+
