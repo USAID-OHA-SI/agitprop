@@ -88,13 +88,19 @@
     distinct(operatingunit) %>% 
     tally() %>% pull()
   
- a <-  df_cxca %>% filter(operatingunit == "USAID",  period != "FY18Q2") %>% 
+  si_blue <- "#4974a5"
+  
+ a <-  df_cxca %>% 
+   filter(operatingunit == "USAID",  period != "FY18Q2") %>% 
    mutate(positivity = CXCA_SCRN_POS/CXCA_SCRN) %>% 
     ggplot(aes(x = period)) +
-    geom_col(aes(y = CXCA_SCRN), fill = golden_sand_light) +
-    geom_col(aes(y = CXCA_SCRN_POS), fill = golden_sand) +
+   geom_col(aes(y = CXCA_SCRN), fill = golden_sand_light,
+            width = 0.6) +
+   geom_col(aes(y = CXCA_SCRN_POS), fill = golden_sand, width = 0.5, 
+            position = position_nudge(x = nudge_space)) + 
+   geom_col(aes(y = CXCA_TX), fill = si_blue, width = 0.5, position = position_nudge(x = -nudge_space)) +
     geom_text(aes(y = CXCA_SCRN_POS, label = percent(positivity, 1)),
-              size = 12/.pt, family = "Source Sans Pro SemiBold", vjust = -0.5) +
+              size = 12/.pt, family = "Source Sans Pro SemiBold", vjust = -0.5, hjust = -0.5) +
     facet_wrap(~ou_order, scales = "free_y") +
     si_style_xline() +
    geom_hline(yintercept = seq(1e5, 3e5, 1e5), color = "white", size = 0.5) +
@@ -110,9 +116,9 @@
   b <- df_cxca %>% 
     filter(operatingunit == "USAID", period != "FY18Q2") %>% 
     ggplot(aes(x = period, y = tx_rate, group = operatingunit)) +
-    geom_area(aes(y = 1), fill = denim_light, alpha = 0.5)+
-    geom_area(fill = golden_sand_light)+
-    geom_line(color = golden_sand, size = 2) +
+    geom_area(aes(y = 1), fill = "#bdcee2", alpha = 0.5)+
+    geom_area(fill = si_blue, alpha = 0.5)+
+    geom_line(color = si_blue, size = 2) +
     # geom_textpath(aes(label = "Treatment rate"), hjust = 0.95, vjust = -1, include_line = F)+
     geom_text(aes(label = "Treatment rate", y = 1, x = "FY21Q2"), vjust = -1,
               family = "Source Sans Pro", size = 12/.pt) +
@@ -133,3 +139,4 @@
   si_save("Graphics/25_test_semi_CXCA-screening-trends.svg", scale = 1.2)  
   
 
+  
