@@ -181,7 +181,7 @@ query_datim <- function(ou_uid, org_lvl, type, username, password, baseurl = "ht
   
   full_url <- paste0(core_url, type_url, end_url)
   
-  df <- get_datim_targets(full_url, username, password)
+  df <- glamr::datim_process_query(full_url, username, password)
   
   return(df)
 }
