@@ -29,9 +29,10 @@ library(extrafont)
     filter(fiscal_year == curr_fy) %>% 
     mutate(quarter_end = yq(glue("{fiscal_year}_{quarter}")),
            quarter_start = quarter_end - months(3),
-           data_release = as.Date(entry_close) + weeks(1),
+           release_lag = ifelse(quarter == 4 & type == "clean", 3, 1),
+           data_release = as.Date(entry_close) + weeks(release_lag),
            qtr_lab = glue("Q{quarter}")) %>% 
-    select(-starts_with("entry")) %>%
+    select(-starts_with("entry"), -release_lag) %>%
     pivot_longer(starts_with("quarter_"),
                  names_prefix = "quarter_",
                  names_to = "pd_type",
