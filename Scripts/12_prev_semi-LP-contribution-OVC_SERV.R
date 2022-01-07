@@ -105,6 +105,11 @@ ovc_latest <- pull_figures(df_ovc, "OVC_SERV", "Local", cumulative)
 ovc_max <- pull_figures(df_ovc, "OVC_SERV", "Local", total)
 ovc_share <- pull_figures(df_ovc, "OVC_SERV", "Local", share)
 
+# Need FY in labels on x-axis
+
+fy_breaks <- c(paste0("FY", rep(seq(substr(min_yr, 3, 4) %>% as.numeric, 
+                                    substr(curr_fy, 3, 4) %>% as.numeric, 
+                                    1))))
 
 # OVC SERV
 df_ovc %>% 
@@ -121,12 +126,12 @@ df_ovc %>%
             color = grey10k,
             size = 12/.pt, family = "Source Sans Pro", color = grey90k, vjust = 2) +
   scale_y_continuous(labels = label_number_si(), position = "right", lim = c(0, 5.5e6)) +
-  scale_x_continuous(breaks = seq(min_yr, curr_fy, 1)) +
+  scale_x_continuous(breaks = seq(min_yr, curr_fy, 1), labels = fy_breaks) +
   si_style_xline(text_scale = 1.25) +
   coord_cartesian(expand = F) +
   labs(x = NULL, y = NULL,
-       title = glue("LOCAL PARTNERS CONTINUE TO EXPAND SERVICES TO ORPHANS AND VULNERABLE CHILDREN UNDER 18, 
-       ACCOUNTING FOR {label_number_si(0.01)(ovc_latest)} OVC_SERV -- MORE THAN 1/2 OF THE USAID TOTAL IN {curr_fy}"),
+       title = glue("LOCAL PARTNERS CONTINUE TO EXPAND SERVICES TO ORPHANS AND VULNERABLE CHILDREN (OVC) UNDER 18, 
+       ACCOUNTING FOR {label_number_si(0.01)(ovc_latest)} OVCs -- MORE THAN HALF OF ALL OVCs REACHED BY USAID IN {substr(curr_pd, 1, 4)}"),
        caption = glue("Source: {msd_source}
                       SI analytics: {paste(authors, collapse = '/')}
                      US Agency for International Development"))
