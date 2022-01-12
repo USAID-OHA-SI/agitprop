@@ -3,7 +3,7 @@
 # PURPOSE:  site count of USAID supported facilities
 # LICENSE:  MIT
 # DATE:     2021-05-11
-# UPDATED:  2021-10-07
+# UPDATED:  2022-01-12
 # NOTE:     adapted from USAID-OHA-SI/findyourbeach (linked below)
 # URL:      https://github.com/USAID-OHA-SI/find_your_beach/blob/master/Scripts/01_query_datim.R
 
@@ -21,7 +21,7 @@
   library(glue)
   library(Wavelength)
   
-  source("Scripts/99_utilities.R")
+  source("Scripts/archive/99_utilities.R")
 
 # GLOBAL VARIABLES --------------------------------------------------------
   
@@ -37,8 +37,7 @@
   
   #uids and levels for each country
   ctry_list <- get_outable(datim_user(), datim_pwd()) %>% 
-    select(operatingunit, operatingunit_uid, countryname, 
-           psnu_lvl, facility_lvl)
+    select(countryname, countryname_uid, facility_lvl)
   
   #expand each country by the API type for pmap
   full_list <- expand_grid(countryname = ctry_list$countryname,
@@ -47,14 +46,14 @@
   
   #run API across all countries
   df_full <- full_list %>% 
-    select(operatingunit_uid, facility_lvl, type) %>% 
-    pmap_dfr(~ query_datim(..1, ..2, ..3, datim_user(), datim_pwd()))
+    select(countryname, countryname_uid, facility_lvl, type) %>% 
+    pmap_dfr(~ query_datim(..1, ..2, ..3, ..4, datim_user(), datim_pwd()))
 
   
 # PULL COORDINATES --------------------------------------------------------
   
   #pull hierarchy
-  df_orgs <- map_dfr(.x = unique(ctry_list$operatingunit_uid),
+  df_orgs <- map_dfr(.x = unique(ctry_list$countryname_uid),
                      .f = ~ pull_hierarchy(.x, datim_user(), datim_pwd())) 
   
   
@@ -134,7 +133,7 @@
            indicator = factor(indicator, c("HTS_TST", "TX_CURR", "LAB_PTCQI")),
            ind_display = case_when(indicator == "HTS_TST" ~ "HIV testing services",
                                    indicator == "TX_CURR" ~ "Providing antiretrovial treatment",
-                                   indicator == "LAB_PTCQI" ~ "Laboratory-based and/or point-of-care testing"))
+                                   indicator == "LAB_PTCQI" ~ "Laboratory-based testing"))
 
 
 # VIZ ---------------------------------------------------------------------
