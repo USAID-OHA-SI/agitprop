@@ -118,6 +118,7 @@
                      US Agency for International Development"))
          
   si_save("Images/28_treat_qtr_LP_contribution_TX_CURR.png", scale = 1.25)
+  si_save("Images/28_treat_qtr_LP_contribution_TX_CURR.svg", scale = 1.25)
   
 
 
