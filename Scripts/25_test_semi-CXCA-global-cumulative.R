@@ -89,6 +89,7 @@
     tally() %>% pull()
   
   si_blue <- "#4974a5"
+  nudge_space  <-  0.15
   
  a <-  df_cxca %>% 
    filter(operatingunit == "USAID",  period != "FY18Q2") %>% 
