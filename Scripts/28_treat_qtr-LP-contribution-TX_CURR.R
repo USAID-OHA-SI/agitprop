@@ -112,7 +112,8 @@
     si_style_xline(text_scale = 1.25) +
     coord_cartesian(expand = F) +
     labs(x = NULL, y = NULL, 
-         title = glue("LOCAL PARTNERS HAVE ADDED MORE PEOPLE ON TREATMENT IN {curr_fy} THAN PREVIOUS YEARS, ALREADY REACHING NEARLY {label_number_si()(tx_latest)} PEOPLE"),
+         title = glue("LOCAL PARTNERS HAVE ADDED MORE PEOPLE ON TREATMENT IN {curr_fy} THAN 
+                      PREVIOUS YEARS, ALREADY REACHING NEARLY {label_number_si()(tx_latest)} PEOPLE"),
          caption = glue("Source: {msd_source}
                       SI analytics: {paste(authors, collapse = '/')}
                      US Agency for International Development"))
