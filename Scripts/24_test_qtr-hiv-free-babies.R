@@ -156,7 +156,7 @@
                      US Agency for International Development")) +
     theme(axis.text.y = element_blank())
   
-  si_save("Images/12_hiv_free_babies_v2.png", scale = 1.1)
+  si_save("Images/24_tst_qtr-hiv-free.png", scale = 1.1)
 
 
     
