@@ -38,9 +38,19 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
+#nothing from these folders
+AI/*
+GIS/*
+Images/*
+Graphics/*
+Dataout/*
+*.csv
+*.svg
+Scripts/16_EA_Spend_type_circles.R
+
 #no data
-#*.csv
-#*.txt
+*.csv
+*.txt
 *.rds
 *.xlsx
 *.xls
@@ -54,8 +64,3 @@ AI/*
 GIS/*
 Images/*
 Graphics/*
-Dataout/*
-*.csv
-*.svg
-Scripts/16_EA_Spend_type_circles.R
-Scripts/16_EA_Spend_type_circles.R

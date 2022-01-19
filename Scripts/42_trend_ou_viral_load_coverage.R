@@ -1,8 +1,9 @@
 # PROJECT:  agitprop
 # AUTHOR:   B.Kagniniwa | USAID
-# PURPOSE:  COVID Stringency Index + MER Trends
+# PURPOSE:  VLC Trend by OU
 # LICENSE:  MIT
 # DATE:     2021-12-07
+# 
 
 # DEPENDENCIES ----
 
@@ -30,6 +31,9 @@
   
   file_ou_im_prev <- dir_merdata %>% 
     return_latest(pattern = "OU_IM_FY15-18_\\d{8}.*")
+  
+  epi_cntries <- c("Kenya", "Uganda", "Botswana", 
+                   "Lesotho", "Eswatini", "Namibia")
   
 # IMPORT ----
   
@@ -158,22 +162,37 @@
                                 "South Sudan", "DR"),
            !str_detect(period, "FY17"), 
            str_detect(period, "Q4$")) %>% 
+    mutate(epi_color = case_when(
+      operatingunit %in% epi_cntries ~ trolley_grey_light,
+      TRUE ~ "white"
+    )) %>% #view
     ggplot(aes(x = period, y = VLC)) +
+    geom_rect(aes(fill = epi_color),
+              xmin = -Inf, xmax = Inf,
+              ymin = 0, ymax = 1,
+              alpha = .3,
+              color = NA) +
     geom_col(fill = scooter) +
     geom_hline(yintercept = 0, size = .3, color = usaid_black) +
+    geom_hline(yintercept = 0.9, size = .3, lty = "dotted", color = usaid_black) +
     geom_text(aes(label = percent(VLC, 1)),
                size = 0, vjust = -.50, color = trolley_grey) +
     scale_x_discrete(labels = period_labels3) +
-    scale_y_continuous(labels = percent, position = "right") +
+    #scale_y_continuous(breaks = c(0, .25, .50, .75, .90, 1), labels = percent, position = "right") +
+    scale_y_continuous(breaks = c(0, .5, .90), labels = percent, position = "right") +
+    scale_fill_identity() +
     facet_wrap(~operatingunit, ncol = 4) +
-    labs(x = "", y = "") +
+    labs(x = "", y = "",
+         title = "USAID - Viral Load Coverage Trend by OU",
+         subtitle = "Only Botswana, Eswatini, Kenya, Lesotho, Namibia, and Uganda have reached Epi Control",
+         caption = "Source: FY21Q4c - VLC = TX_PVLS_D / lag(TX_CURR, 2)\nProduced by OHA/SIEI/SI/Core Analytics on 2022-01-19") +
     si_style_ygrid() +
-    theme(axis.line.x = element_line(size = .2),
+    theme(axis.line.x = element_blank(),
           axis.text.y = element_text(family = "Source Sans Pro", size = 7, face = "bold", color = usaid_black),
           axis.text.x = element_markdown(family = "Source Sans Pro", size = 12, face = "bold", color = usaid_black),
           strip.text = element_text(family = "Source Sans Pro", size = 12, color = usaid_black))
   
-  ggsave(file.path(dir_graphics, "USAID - OU VLC Trend.png"),
+  si_save(file.path(dir_graphics, "USAID - OU VLC Trend.png"),
          plot = last_plot(),
          path = NULL,
          scale = 1,
