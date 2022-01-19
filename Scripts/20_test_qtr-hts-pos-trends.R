@@ -34,6 +34,8 @@ clean_number <- function(x, digits = 0){
 
 
 # IMPORT ------------------------------------------------------------------
+  
+load_secrets()
 
 #Source: PEPFAR Spotlight (public)
 df_hist <- read_csv("Data/Country and Regional Targets_Results 2004-2016.csv",
@@ -46,7 +48,8 @@ df_hist <- read_csv("Data/Country and Regional Targets_Results 2004-2016.csv",
 #Current MSD
 df <- si_path() %>% 
   return_latest("OU_IM_FY19") %>% 
-  read_msd()
+  read_msd() %>% 
+  resolve_knownissues()
 
 #Archived MSD
 df_arch <- si_path() %>% 
@@ -114,7 +117,7 @@ title_info_usaid <- df_hts_viz %>%
          fundingagency == "USAID") %>% 
   select(fiscal_year, hts_pos, share) %>% 
   mutate(share = percent(round(share, 2)),
-         hts_pos = ro90und(hts_pos, 2),
+         hts_pos = round(hts_pos, 2),
          hts_pos = hts_pos %>%  clean_number()) 
 
 title_info_pepfar <- df_hts_viz %>% 
@@ -136,13 +139,16 @@ df_hts_viz %>%
   #facet_grid(label_hts~., switch = "y") +
   #geom_text(aes(label = value_label), na.rm = TRUE, vjust = -0.5, 
     #        family = "Source Sans Pro") +
+  geom_text(data = . %>% filter(fiscal_year == curr_fy, fundingagency == "USAID"), 
+            aes(label = percent(share, 1)), 
+            vjust = 1.2, family = "Source Sans Pro", color = "white")  +
   scale_y_continuous(labels = label_number_si(),
                      position = "right") +
   scale_x_continuous(expand = c(.005, .005),
                      n.breaks = unique(df_hts_viz$fiscal_year) %>% length())+
   scale_alpha_identity() +
   labs(x = NULL, y = NULL, fill = NULL,
-       title = glue("As of {curr_pd}, {title_info_usaid$share} of the {title_info_pepfar$hts_pos} newly \\
+       title = glue("In {str_sub(curr_pd, 1, 4)}, {title_info_usaid$share} of the {title_info_pepfar$hts_pos}+ newly \\
                      identified patients in PEPFAR were identified by USAID testing services") %>%  toupper(),
        caption = glue("Source: {msd_source} (including FY15-18) + Spotlight FY04-14
                         SI analytics: {paste(authors, collapse = '/')}
@@ -150,7 +156,8 @@ df_hts_viz %>%
   si_style_ygrid() +
   theme(strip.placement = "outside",
         strip.text.y = element_markdown(family = "Source Sans Pro SemiBold", hjust = .5, 
-                                        color = old_rose))
+                                        color = old_rose)) +
+  coord_cartesian(expand = F)
 
 si_save("Graphics/20_test_qtr.svg")
-
+si_save("Images/20_test_qtr.png")
