@@ -3,7 +3,7 @@
 # PURPOSE:  treatment scale up since PEPFAR start
 # LICENSE:  MIT
 # DATE:     2021-11-30
-# UPDATED:  2021-12-06
+# UPDATED:  2022-4-14
 # NOTE:     adapted from agitprop/04a_usaid_tx_trends.R
 
 # DEPENDENCIES ------------------------------------------------------------
@@ -39,7 +39,7 @@
   
   #Current MSD
   df <- si_path() %>% 
-    return_latest("OU_IM_FY19") %>% 
+    return_latest("OU_IM_FY20") %>% 
     read_msd()
   
   #Archived MSD
@@ -174,7 +174,7 @@
              curvature = .4,
              color = "white")
   
-  si_save("Graphics/26_treat_qtr_historic-txcurr-trends.svg")
+  si_save("Graphics/26_treat_qtr_historic-txcurr-trends-4-22.svg")
   
  
   v_ann +
@@ -185,5 +185,6 @@
               aes(label = percent(usaid_share, 1)), na.rm = TRUE,
               family = "Source Sans Pro", color = moody_blue, vjust = -.8)
   
-  si_save("Graphics/27_treat_qtr_historic-txcurr-trends-share.svg")
+  si_save("Graphics/27_treat_qtr_historic-txcurr-trends-share-4-22.svg")
+  
   
