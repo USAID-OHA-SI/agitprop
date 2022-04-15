@@ -3,7 +3,7 @@
 # PURPOSE:  MMD
 # LICENSE:  MIT
 # DATE:     2021-12-01
-# UPDATED:  
+# UPDATED:  2022-04-14
 # NOTE:     adapted from agitprop/11_MMD.R & catch-22/gpm_usaid_mmd-trends-by-country.R
 
 # DEPENDENCIES ------------------------------------------------------------
@@ -28,7 +28,7 @@
 # IMPORT ------------------------------------------------------------------
   
   df <- si_path() %>% 
-    return_latest("OU_IM_FY19") %>% 
+    return_latest("OU_IM_FY20") %>% 
     read_msd()   
 
 
