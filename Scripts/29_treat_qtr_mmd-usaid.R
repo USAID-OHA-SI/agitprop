@@ -3,9 +3,9 @@
 # PURPOSE:  MMD
 # LICENSE:  MIT
 # DATE:     2021-12-01
-# UPDATED:  2022-04-14
+# UPDATED:  2022-06-01
 # NOTE:     adapted from agitprop/11_MMD.R & catch-22/gpm_usaid_mmd-trends-by-country.R
-# test 2.0
+
 
 # DEPENDENCIES ------------------------------------------------------------
   
@@ -25,6 +25,9 @@
   authors <- c("Aaron Chafetz", "Tim Essam", "Karishma Srikanth")
 
   msd_source <- source_info()
+  curr_pd <- source_info(genie_path, return = "period")
+  curr_fy <- source_info(genie_path, return = "fiscal_year")
+  curr_qtr <- source_info(genie_path, return = "quarter")
   
 # IMPORT ------------------------------------------------------------------
   
@@ -37,7 +40,7 @@
 
   #keep just TX_CURR/MMD
   df_mmd <- df %>% 
-    filter(fundingagency == "USAID",
+    filter(funding_agency == "USAID",
            indicator == "TX_CURR",
            operatingunit != "South Africa",
            fiscal_year >= 2020,
@@ -163,6 +166,7 @@
     geom_errorbar(aes(ymax = tx_curr, ymin = tx_curr), color = trolley_grey) +
     # facet_wrap(~otherdisaggregate) +
     facet_wrap(~otherdisaggregate_md) +
+    scale_x_discrete(breaks = c("FY20Q2", "FY20Q4", "FY21Q2", "FY21Q4", "FY22Q2")) +
     scale_fill_identity() +
     scale_y_continuous(labels = label_number_si(),
                        position = "right", expand = c(.005, .005)) +
@@ -180,6 +184,7 @@
   
 
   si_save("Graphics/29a_treat_qtr_mmd-usaid.svg")  
+  si_save("Images/29a_treat_qtr_mmd-usaid.png")  
   
   
   #Country Trends
@@ -193,7 +198,7 @@
     facet_wrap(~fct_reorder2(country_lab, period, tx_curr, .desc = TRUE)) +
     scale_y_continuous(label = percent, 
                        breaks = seq(0, 1, .5)) +
-    scale_x_discrete(breaks = c("FY20Q1", "FY20Q3", "FY21Q1", "FY21Q3")) +
+    scale_x_discrete(breaks = c("FY20Q1", "FY20Q3", "FY21Q1", "FY21Q3", "FY22Q1")) +
     scale_color_identity(aesthetics = c("color","fill")) +
     coord_cartesian(clip = "off") +
     labs(x = NULL, y = NULL,
@@ -211,6 +216,7 @@
           panel.grid.minor.y = element_line(color = "#E8E8E8"),
           strip.text = element_markdown())    
   
-  si_save("Graphics/29b_treat_qtr_mmd-countries.svg")    
+  si_save("Graphics/29b_treat_qtr_mmd-countries.svg")
+  si_save("Images/29b_treat_qtr_mmd-countries.png")        
   
   
