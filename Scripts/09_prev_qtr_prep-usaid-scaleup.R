@@ -3,7 +3,7 @@
 # PURPOSE:  scale up of prep
 # LICENSE:  MIT
 # DATE:     2021-12-01
-# UPDATED:  
+# UPDATED:  2022-06-02
 # NOTE:     adapted from agitprop/09a_usaid_prep_scaleup.R
 
 # DEPENDENCIES ------------------------------------------------------------
@@ -24,13 +24,13 @@
   
   authors <- c("Aaron Chafetz", "Tim Essam", "Karishma Srikanth")
   
-  curr_fy <- source_info(return = "fiscal_year")
+  curr_fy <-source_info(return = "fiscal_year")
   curr_pd <- source_info(return = "period")
   
 # IMPORT ------------------------------------------------------------------
   
   df <- si_path() %>% 
-    return_latest("OU_IM_FY19") %>% 
+    return_latest("OU_IM_FY20") %>% 
     read_msd()   
   
   df_arch <- si_path() %>% 
@@ -38,11 +38,14 @@
     read_msd()
 
 # MUNGE -------------------------------------------------------------------
+  
+  df_arch <- df_arch %>% 
+    rename(funding_agency = fundingagency)
 
   #bind archived + current MSD and filter for PrEP
   df_prep <- df %>%
     bind_rows(df_arch) %>% 
-    filter(fundingagency == "USAID",
+    filter(funding_agency == "USAID",
            indicator == "PrEP_NEW",
            standardizeddisaggregate == "Total Numerator",
            fiscal_year >= 2017)
@@ -61,7 +64,7 @@
   
   #aggregate result to USAID level
   df_prep <- df_prep %>% 
-    group_by(fiscal_year, fundingagency) %>% 
+    group_by(fiscal_year, funding_agency) %>% 
     summarise(across(starts_with("qtr"), sum, na.rm = TRUE)) %>% 
     ungroup() %>% 
     reshape_msd() %>% 
@@ -113,7 +116,7 @@
     arrange(period)
   
   v <- df_viz %>% 
-    ggplot(aes(period, value, group = fundingagency)) + 
+    ggplot(aes(period, value, group = funding_agency)) + 
     geom_area(fill = scooter, color = scooter, alpha = .2, size = 1, na.rm = TRUE) +
     geom_vline(xintercept = fy_start, color = "white", 
                size = .9, linetype = "dotted") +
@@ -156,5 +159,9 @@
              x = 16.9, y = 60e3, xend = 17, yend = 75e3,
              color = matterhorn)
   
-  si_save("Graphics/09_prev_qtr_prep-usaid-scaleup.svg")  
+  si_save("Graphics/09_prev_qtr_prep-usaid-scaleup.svg")
+  si_save("Images/09_prev_qtr_prep-usaid-scaleup.png") 
+  
+ 
+
   
