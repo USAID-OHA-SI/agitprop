@@ -27,13 +27,16 @@
   dir_graphics <- "./Graphics"
   
   file_ou_im_curr <- dir_merdata %>% 
-    return_latest(pattern = "OU_IM_FY19-22_\\d{8}.*")
+    return_latest(pattern = "OU_IM_FY20-22_\\d{8}.*")
   
   file_ou_im_prev <- dir_merdata %>% 
-    return_latest(pattern = "OU_IM_FY15-18_\\d{8}.*")
+    return_latest(pattern = "OU_IM_FY15-19_\\d{8}.*")
   
   epi_cntries <- c("Kenya", "Uganda", "Botswana", 
                    "Lesotho", "Eswatini", "Namibia")
+  
+  msd_source <- source_info(file_ou_im_curr)
+ today <-  today()
   
 # IMPORT ----
   
@@ -68,18 +71,19 @@
   df_tx_ou <- df_msd %>% 
     filter(
       fiscal_year != curr_fy + 1,
-      fundingagency == "USAID",
-      indicator %in% c("TX_CURR", "TX_PVLS_D"),
+      funding_agency == "USAID",
+      indicator %in% c("TX_CURR", "TX_PVLS_D", "TX_PVLS"),
       standardizeddisaggregate %in% c("Total Numerator", "Total Denominator")
     ) %>% 
-    group_by(fiscal_year, fundingagency, operatingunit, indicator) %>% 
+    group_by(fiscal_year, funding_agency, operatingunit, indicator) %>% 
     summarise(across(starts_with("qtr"), sum, na.rm = T), .groups = "drop") %>% 
     reshape_msd() %>% 
     dplyr::select(-period_type) %>% 
     pivot_wider(names_from = indicator, values_from = value) %>% 
-    group_by(fundingagency, operatingunit) %>% 
+    group_by(funding_agency, operatingunit) %>% 
     mutate(TX_CURR_LAG2 = lag(TX_CURR, 2, order_by = period),
-           VLC = TX_PVLS_D / TX_CURR_LAG2) %>% 
+           VLC = TX_PVLS_D / TX_CURR_LAG2,
+           VLS = TX_PVLS/TX_PVLS_D) %>% 
     ungroup() %>% 
     relocate(TX_CURR_LAG2, .before = TX_CURR) %>% 
     filter(!is.na(TX_PVLS_D), TX_PVLS_D > 0)
@@ -88,22 +92,23 @@
   df_tx_global <- df_msd %>% 
     filter(
       fiscal_year != curr_fy + 1,
-      fundingagency == "USAID",
-      indicator %in% c("TX_CURR", "TX_PVLS_D"),
+      funding_agency == "USAID",
+      indicator %in% c("TX_CURR", "TX_PVLS_D", "TX_PVLS"),
       standardizeddisaggregate %in% c("Total Numerator", "Total Denominator")
     ) %>% 
-    group_by(fiscal_year, fundingagency, operatingunit, indicator) %>% 
+    group_by(fiscal_year, funding_agency, operatingunit, indicator) %>% 
     summarise(across(starts_with("qtr"), sum, na.rm = T), .groups = "drop") %>% 
     reshape_msd() %>% 
     select(-period_type) %>% 
     pivot_wider(names_from = indicator, values_from = value) %>% 
-    group_by(fundingagency, operatingunit) %>% 
+    group_by(funding_agency, operatingunit) %>% 
     mutate(TX_CURR_LAG2 = lag(TX_CURR, 2, order_by = period)) %>% 
     relocate(TX_CURR_LAG2, .before = TX_CURR) %>% 
     filter(!is.na(TX_PVLS_D), TX_PVLS_D > 0) %>% 
-    group_by(period, fundingagency) %>% 
+    group_by(period, funding_agency) %>% 
     summarise(across(starts_with("TX"), sum, na.rm = T), .groups = "drop") %>% 
-    mutate(VLC = TX_PVLS_D / TX_CURR_LAG2)
+    mutate(VLC = TX_PVLS_D / TX_CURR_LAG2,
+           VLS = TX_PVLS/TX_PVLS_D)
   
 # VIZ ----
 
@@ -141,7 +146,7 @@
   
   # Nigeria
   df_tx_ou %>% 
-    filter(fundingagency == "USAID",
+    filter(funding_agency == "USAID",
            operatingunit == "Nigeria") %>% 
     ggplot(aes(x = period, y = VLC)) +
     geom_col(fill = scooter) +
@@ -154,9 +159,9 @@
     si_style_ygrid() +
     theme(axis.text = element_text(family = "Source Sans Pro",
                                    size = 12, color = usaid_black))
-  # OUs
+  # OUs - VLC
   df_tx_ou %>% 
-    filter(fundingagency == "USAID",
+    filter(funding_agency == "USAID",
            operatingunit %ni% c("Angola", "Asia Region", "Ethiopia", 
                                 "WAR", "WHR", "Vietnam", "Cote d'Ivoire",
                                 "South Sudan", "DR"),
@@ -202,13 +207,13 @@
   
   # Global 
   df_tx_global %>% 
-    filter(fundingagency == "USAID",
+    filter(funding_agency == "USAID",
            !str_detect(period, "FY17"),
            str_detect(period, "Q4$")) %>% 
-    ggplot(aes(x = period, y = VLC)) +
+    ggplot(aes(x = period, y = VLS)) +
     geom_col(fill = scooter) +
     geom_hline(yintercept = 0, size = 1, color = usaid_black) +
-    geom_text(aes(label = percent(VLC, 1)),
+    geom_text(aes(label = percent(VLS, 1)),
               size = 8, vjust = -.2, fontface = "bold", color = usaid_black) +
     scale_x_discrete(labels = period_labels3) +
     scale_y_continuous(labels = percent, position = "right", expand = c(0, 0.08)) +
@@ -230,7 +235,7 @@
   
   # Table
   df_tx_ou %>% 
-    filter(fundingagency == "USAID",
+    filter(funding_agency == "USAID",
            !str_detect(period, "FY17")) %>% 
     select(period, operatingunit, VLC) %>%
     pivot_wider(names_from = period, values_from = VLC) %>% 
@@ -238,10 +243,45 @@
   
   
   
-  
-  
-  
-  
+  #OUs - VLS
+  df_tx_ou %>% 
+    filter(funding_agency == "USAID",
+           operatingunit %ni% c("Angola", "Asia Region", "Ethiopia", 
+                                "WAR", "WHR", "Vietnam", "Cote d'Ivoire",
+                                "South Sudan", "DR"),
+           !str_detect(period, "FY17"), 
+           str_detect(period, "Q4$")) %>% 
+    mutate(epi_color = case_when(
+      operatingunit %in% epi_cntries ~ trolley_grey_light,
+      TRUE ~ "white"
+    )) %>% #view
+    ggplot(aes(x = period, y = VLS)) +
+    geom_rect(aes(fill = epi_color),
+              xmin = -Inf, xmax = Inf,
+              ymin = 0, ymax = 1,
+              alpha = .3,
+              color = NA) +
+    geom_col(fill = scooter_light) +
+    geom_hline(yintercept = 0, size = .3, color = usaid_black) +
+    geom_hline(yintercept = 0.9, size = .3, lty = "dotted", color = usaid_black) +
+    geom_text(aes(label = percent(VLS, 1)), vjust = 1.2, family = "Source Sans Pro", color = usaid_black) +
+    scale_x_discrete(labels = period_labels3) +
+    #scale_y_continuous(breaks = c(0, .25, .50, .75, .90, 1), labels = percent, position = "right") +
+    scale_y_continuous(breaks = c(0, .5, .90), labels = percent, position = "right") +
+    scale_fill_identity() +
+    facet_wrap(~operatingunit, ncol = 4) +
+    labs(x = "", y = "",
+         title = "USAID - Viral Load Suppression Trend by OU",
+         subtitle = "Only Botswana, Eswatini, Kenya, Lesotho, Namibia, and Uganda have reached Epi Control",
+         caption = glue("Source: {msd_source} - VLS = TX_PVLS / TX_PVLS_D\nProduced by OHA/SIEI/SI/Core Analytics on {today}")) +
+    si_style_ygrid() +
+    theme(axis.line.x = element_blank(),
+          axis.text.y = element_text(family = "Source Sans Pro", size = 7, face = "bold", color = usaid_black),
+          axis.text.x = element_markdown(family = "Source Sans Pro", size = 12, face = "bold", color = usaid_black),
+          strip.text = element_text(family = "Source Sans Pro", size = 12, color = usaid_black))
+
+
+  si_save("Images/USAID - VLS Trend.png")
   
   
   
