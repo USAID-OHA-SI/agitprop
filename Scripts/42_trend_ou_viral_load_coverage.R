@@ -137,8 +137,10 @@
     pull()
   
   period_labels3 <- df_tx_ou %>% 
-    filter(!str_detect(period, "FY17"),
-           str_detect(period, "Q4")) %>% 
+    filter(!str_detect(period, "FY17")
+           ,
+           str_detect(period, "Q4$|FY22Q2")
+           ) %>% 
     dplyr::select(period) %>% 
     distinct(period) %>% 
     mutate(period = str_sub(period, 1, 4)) %>% 
@@ -250,18 +252,21 @@
                                 "WAR", "WHR", "Vietnam", "Cote d'Ivoire",
                                 "South Sudan", "DR"),
            !str_detect(period, "FY17"), 
-           str_detect(period, "Q4$")) %>% 
+          # period == max(period)
+           str_detect(period, "Q4$|FY22Q2")
+           ) %>% 
     mutate(epi_color = case_when(
       operatingunit %in% epi_cntries ~ trolley_grey_light,
-      TRUE ~ "white"
-    )) %>% #view
+      TRUE ~ "white"),
+      fill_color = ifelse(str_detect(period, "Q4$"), scooter_med, scooter_light)) %>% #view
     ggplot(aes(x = period, y = VLS)) +
     geom_rect(aes(fill = epi_color),
               xmin = -Inf, xmax = Inf,
               ymin = 0, ymax = 1,
               alpha = .3,
               color = NA) +
-    geom_col(fill = scooter_light) +
+    geom_col(aes(fill = fill_color)) +
+    scale_fill_identity() +
     geom_hline(yintercept = 0, size = .3, color = usaid_black) +
     geom_hline(yintercept = 0.9, size = .3, lty = "dotted", color = usaid_black) +
     geom_text(aes(label = percent(VLS, 1)), vjust = 1.2, family = "Source Sans Pro", color = usaid_black) +
@@ -282,6 +287,8 @@
 
 
   si_save("Images/USAID - VLS Trend.png")
+  si_save("Graphics/USAID - VLS Trend.svg")
+  
   
   
   
