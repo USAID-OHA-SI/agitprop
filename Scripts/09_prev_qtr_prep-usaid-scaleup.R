@@ -3,7 +3,7 @@
 # PURPOSE:  scale up of prep
 # LICENSE:  MIT
 # DATE:     2021-12-01
-# UPDATED:  2022-06-02
+# UPDATED:  2022-08-05
 # NOTE:     adapted from agitprop/09a_usaid_prep_scaleup.R
 
 # DEPENDENCIES ------------------------------------------------------------
@@ -26,6 +26,8 @@
   
   curr_fy <-source_info(return = "fiscal_year")
   curr_pd <- source_info(return = "period")
+  #source info
+  msd_source <- source_info()
   
 # IMPORT ------------------------------------------------------------------
   
@@ -39,8 +41,8 @@
 
 # MUNGE -------------------------------------------------------------------
   
-  df_arch <- df_arch %>% 
-    rename(funding_agency = fundingagency)
+ # df_arch <- df_arch %>% 
+ #  rename(funding_agency = fundingagency)
 
   #bind archived + current MSD and filter for PrEP
   df_prep <- df %>%
@@ -59,7 +61,7 @@
   #count number of countries with PrEP
   df_cntry_cnt <- df_prep %>% 
     filter(cumulative != 0) %>% 
-    distinct(fiscal_year, countryname) %>% 
+    distinct(fiscal_year, country) %>% 
     count(fiscal_year, name = "n_countries")
   
   #aggregate result to USAID level
