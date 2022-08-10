@@ -1,5 +1,6 @@
 # PROJECT:  agitprop
 # AUTHOR:   A.Chafetz | USAID
+# REF ID:   `r Sys.time() |> digest::sha1() |> substr(start = 1, stop = 8)`
 # PURPOSE:  scale up of prep
 # LICENSE:  MIT
 # DATE:     2021-12-01
@@ -19,6 +20,8 @@
   library(ggtext)
   library(glue)
 
+  # Reference ID to be used for searching GitHub
+  ref_id <- "d83879e3"
 
 # GLOBAL VARIABLES --------------------------------------------------------
   
@@ -116,7 +119,7 @@
   df_viz <- df_prep %>% 
     bind_rows(extra_pds) %>% 
     arrange(period)
-  
+   
   v <- df_viz %>% 
     ggplot(aes(period, value, group = funding_agency)) + 
     geom_area(fill = scooter, color = scooter, alpha = .2, size = 1, na.rm = TRUE) +
@@ -134,7 +137,7 @@
                       countries in 2017") %>% toupper,
          subtitle = "Pre-Exposure Prophylaxis (PrEP) Quarterly Results",
          caption = glue("Source: {msd_source}
-                        SI analytics: {paste(authors, collapse = '/')}
+                        SI analytics: {paste(authors, collapse = '/')} | {ref_id}
                      US Agency for International Development")) +
     si_style_ygrid()
     

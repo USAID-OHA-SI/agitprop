@@ -20,6 +20,9 @@ library(ggtext)
 library(glue)
 library(waffle)
 
+# Reference ID to be used for searching GitHub
+ref_id <- "6756ac6f"
+
 # IMPORT ------------------------------------------------------------------
 
 df <- si_path() %>% 
@@ -40,7 +43,7 @@ df %>%
 df_mmd <- df %>% 
   filter(funding_agency == "USAID",
          indicator == "TX_CURR",
-        # operatingunit != "South Africa",
+         #operatingunit != "South Africa",
          fiscal_year >= 2020,
          standardizeddisaggregate %in% c("Total Numerator", "Age/Sex/ARVDispense/HIVStatus")) %>% 
   mutate(otherdisaggregate = case_when(is.na(otherdisaggregate) ~ "total",
@@ -53,7 +56,7 @@ df_mmd <- df %>%
   filter(value > 0)
 
 #create group for mmd3mo and mmd6mo 
-df_mmd_agency <- df_mmd %>% 
+df_mmd_agency<- df_mmd %>% 
   mutate(country = recode(country,
                               "Democratic Republic of the Congo" = "DRC",
                               "Dominican Republic" = "DR")) %>% 
