@@ -1,6 +1,7 @@
 # PROJECT:  agitprop
 # AUTHOR:   K. Srikanth | USAID
 # PURPOSE:  USAID global OVC support
+# REF ID:   daf92875 
 # LICENSE:  MIT
 # DATE:     2021-12-02
 # NOTE:     adapted from "catch-22/Scripts/2021_08_13_ovcwork.R"
@@ -10,14 +11,14 @@
 library(tidyverse)
 library(glitr)
 library(glamr)
-library(ICPIutilities)
+library(gophr)
 library(extrafont)
 library(scales)
 library(tidytext)
 library(patchwork)
 library(ggtext)
 library(glue)
-library(packcircles)m
+library(packcircles)
 
 #clean number
 clean_number <- function(x, digits = 0){
@@ -30,7 +31,7 @@ clean_number <- function(x, digits = 0){
 # IMPORT ------------------------------------------------------------------
 
 df <- si_path() %>% 
-  return_latest("OU_IM_FY19") %>% 
+  return_latest("OU_IM_FY20") %>% 
   read_msd() 
 
 df_arch <- si_path() %>% 
@@ -47,6 +48,15 @@ curr_pd <- identifypd(df)
 curr_fy <- identifypd(df, "year")
 msd_source <- source_info()
 
+ref_id <- "daf92875"
+
+# Function to group and sum
+group_sum <- function(.data, ...){
+  .data %>% 
+    group_by(indicator, fiscal_year, ...) %>% 
+    summarise(across(c(targets, starts_with("qtr")), sum, na.rm = TRUE), .groups = "drop")
+}
+
 
 # TRENDS IN KNOWN STATUS PROXY (didnt include this) --------------------------
 
@@ -54,7 +64,7 @@ msd_source <- source_info()
 #   bind_rows(df_arch) %>% 
 #   filter((indicator == "OVC_SERV" & standardizeddisaggregate %in% c("Age/Sex/ProgramStatus", "Age/Sex") & trendscoarse == "<18") |
 #            (indicator == "OVC_HIVSTAT"& standardizeddisaggregate == "ReportedStatus"),
-#           fundingagency == "USAID",
+#           funding_agency == "USAID",
 #          fiscal_year >=2018) %>%
 #   mutate(otherdisaggregate = ifelse(is.na(otherdisaggregate), "NA", otherdisaggregate)) %>% 
 #   filter(otherdisaggregate != "No HIV Status") %>% 
@@ -100,7 +110,7 @@ df_hiv_ovc <- df %>%
   bind_rows(df_arch) %>% 
   filter((indicator == "OVC_SERV" & standardizeddisaggregate %in% c("Age/Sex/ProgramStatus", "Age/Sex") & trendscoarse == "<18") |
            (indicator == "OVC_HIVSTAT"& (standardizeddisaggregate == "ReportedStatus" | standardizeddisaggregate == "StatusPosART")),
-          fundingagency == "USAID",
+          funding_agency == "USAID",
          fiscal_year >=2018) 
 
 #2018 - munge for 2018 because disaggs different
@@ -115,7 +125,7 @@ df_hiv_ovc18 <- df_hiv_ovc %>%
   pivot_wider(names_from = indicator)
 
 #munge for 2019-2021  
-df_hiv_ovc <- df_hiv_ovc %>% 
+df_hiv_ovc19_21 <- df_hiv_ovc %>% 
   filter(fiscal_year > 2018,
          standardizeddisaggregate == "ReportedStatus",
          statushiv == "Positive") %>% 
@@ -126,24 +136,46 @@ df_hiv_ovc <- df_hiv_ovc %>%
   arrange(period) %>% 
   pivot_wider(names_from = indicator)
 
+#munge for 2022
+df_hiv_ovc_fy22 <-  df %>% 
+  filter(indicator %in% c("OVC_HIVSTAT"), 
+         standardizeddisaggregate  %in% c("Age/Sex/ReportedStatus"),
+         funding_agency == "USAID",
+         fiscal_year >= 2022) %>% 
+  separate(categoryoptioncomboname, sep = ", ", into = c("age", "sex", "art_status")) %>% 
+  #count(art_status)
+  group_sum(type = art_status) %>% 
+  filter(str_detect(type, "Positive")) %>%
+  group_by(indicator, fiscal_year) %>% 
+  summarise(across(starts_with("qtr"), sum, na.rm = TRUE)) %>% 
+  reshape_msd() %>% 
+  filter(period_type == "results") %>% 
+  arrange(period) %>% 
+  pivot_wider(names_from = indicator)
+
+df_hiv_ovc <- bind_rows(df_hiv_ovc18, df_hiv_ovc19_21, df_hiv_ovc_fy22)
+
 #latest stat
 latest_stat_ovc <- df_hiv_ovc %>% 
   filter(period == max(period)) %>% 
   pull() %>% 
   clean_number()
 
-#bind and add color
-df_hiv_ovc <- df_hiv_ovc18 %>% 
-  bind_rows(df_hiv_ovc) %>%
-  mutate(bar_color = denim)
+# add color and opacity
+df_hiv_ovc <- df_hiv_ovc %>% 
+  mutate(bar_color = denim,
+         bar_alpha = case_when(period == max(period) & str_detect(curr_pd, "Q4", negate = TRUE) ~ .6,
+                               TRUE ~ 1)) 
+
 
 #visual 2 - bar chart of # HIV+ OVC over time
 v2 <- df_hiv_ovc %>% 
   filter(OVC_HIVSTAT > 0) %>% 
   ggplot(aes(period, OVC_HIVSTAT)) + 
   geom_blank(aes(y = 3.5e5)) + 
-  geom_col(aes(fill = bar_color), na.rm = TRUE) +
+  geom_col(aes(fill = bar_color, alpha = bar_alpha), na.rm = TRUE) +
   scale_fill_identity() + 
+  scale_alpha_identity() +
   scale_y_continuous(label = scales::comma,
                      expand = c(.005, .005)) +
   geom_text(aes(label = clean_number(OVC_HIVSTAT), vjust = -1, na.rm = TRUE,
@@ -163,7 +195,7 @@ df_art <- df %>%
   bind_rows(df_arch) %>% 
   filter((indicator == "OVC_SERV" & standardizeddisaggregate %in% c("Age/Sex/ProgramStatus", "Age/Sex") & trendscoarse == "<18") |
            (indicator == "OVC_HIVSTAT"),
-          fundingagency == "USAID",
+          funding_agency == "USAID",
          fiscal_year >=2018)
 
 #create shares 
@@ -217,8 +249,7 @@ v_right  +  plot_annotation(
                almost {percent(latest_stat_art, 1)} of the {latest_stat_ovc} OVC with HIV are on treatment") %>% toupper(),
  # subtitle = glue("{percent(latest_stat) of OVC <18 known their HIV status, \\ ")
   caption = glue("Source: {msd_source}
-                      SI analytics: {paste(authors, collapse = '/')}
-                     US Agency for International Development")) & 
+                      SI analytics: {paste(authors, collapse = '/')} | Ref ID: {ref_id}")) & 
   theme(plot.title = element_text(family = "Source Sans Pro",
                                   size = 14,
                                   face = "bold",
@@ -230,3 +261,4 @@ v_right  +  plot_annotation(
                                     hjust = 1, vjust = 1))
 
 si_save("Graphics/10_prev_semi-ovc-growth.svg")
+si_save("Images/10_prev_semi-ovc-growth.png")

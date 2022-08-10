@@ -1,6 +1,7 @@
 # PROJECT:  agitprop
 # AUTHOR:   A.Chafetz | USAID
 # PURPOSE:  MMD
+# REF ID:   a92e1bd0
 # LICENSE:  MIT
 # DATE:     2021-12-01
 # UPDATED:  2022-06-01
@@ -25,9 +26,11 @@
   authors <- c("Aaron Chafetz", "Tim Essam", "Karishma Srikanth")
 
   msd_source <- source_info()
-  curr_pd <- source_info(genie_path, return = "period")
-  curr_fy <- source_info(genie_path, return = "fiscal_year")
-  curr_qtr <- source_info(genie_path, return = "quarter")
+  curr_pd <- source_info(return = "period")
+  curr_fy <- source_info(return = "fiscal_year")
+  curr_qtr <- source_info(return = "quarter")
+  
+  ref_id <- "a92e1bd0"
   
 # IMPORT ------------------------------------------------------------------
   
@@ -53,8 +56,8 @@
   df_mmd <- df_mmd %>%
     bind_rows(df_mmd  %>%
                 mutate(operatingunit = "USAID",
-                       countryname = "USAID")) %>% 
-    group_by(fiscal_year, operatingunit, countryname, indicator, otherdisaggregate) %>% 
+                       country = "USAID")) %>% 
+    group_by(fiscal_year, operatingunit, country, indicator, otherdisaggregate) %>% 
     summarise(across(starts_with("qtr"), sum, na.rm = TRUE), .groups = "drop") %>% 
     reshape_msd() %>% 
     filter(value > 0)
@@ -64,7 +67,7 @@
     mutate(operatingunit = recode(operatingunit,
                                   "Democratic Republic of the Congo" = "DRC",
                                   "Dominican Republic" = "DR"),
-           countryname = recode(countryname,
+           country = recode(country,
                                 "Democratic Republic of the Congo" = "DRC",
                                 "Dominican Republic" = "DR")) %>% 
     select(-period_type) %>% 
@@ -77,7 +80,7 @@
     ungroup() %>% 
     rename(o6mmd = `6 or more months`) %>% 
     select(-`Less than 3 months`, -`3 to 5 months`) %>% 
-    pivot_longer(-c(period, operatingunit, countryname, indicator, total), 
+    pivot_longer(-c(period, operatingunit, country, indicator, total), 
                  names_to = "otherdisaggregate",
                  values_to = "tx_mmd") %>% 
     rename(tx_curr = total) 
@@ -105,7 +108,7 @@
 
   #country trends for just o3mo
   df_mmd_ou <- df_mmd %>% 
-    arrange(countryname, otherdisaggregate, period) 
+    arrange(country, otherdisaggregate, period) 
   
   #create share on +3mo
   df_mmd_ou <- df_mmd_ou %>% 
@@ -115,28 +118,28 @@
   df_mmd_ou <- df_mmd_ou %>% 
     mutate(max_tx = ifelse(period == max(period) & otherdisaggregate == "o6mmd", tx_curr, 0),
            max_mmd = ifelse(period == max(period) & otherdisaggregate == "o6mmd", tx_mmd, 0)) %>% 
-    group_by(countryname) %>% 
+    group_by(country) %>% 
     mutate(endpoints = case_when(period %in% c(max(period), min(period))~share),
            max_tx = max(max_tx),
            max_mmd = max(max_mmd)) %>% 
     ungroup() %>% 
     mutate(country_lab = case_when(max_tx == max(max_tx) ~ 
-                                     glue("{countryname}<br><span style = 'font-size:8pt'>{label_number_si()(max_mmd)} / {label_number_si()(max_tx)} <span style = 'font-size:6pt'>(+6 MMD/TX_CURR)</span>"),
-                                   TRUE ~ glue("{countryname}<br><span style = 'font-size:8pt'>{label_number_si()(max_mmd)} / {label_number_si()(max_tx)}</span>")),
+                                     glue("{country}<br><span style = 'font-size:8pt'>{label_number_si()(max_mmd)} / {label_number_si()(max_tx)} <span style = 'font-size:6pt'>(+6 MMD/TX_CURR)</span>"),
+                                   TRUE ~ glue("{country}<br><span style = 'font-size:8pt'>{label_number_si()(max_mmd)} / {label_number_si()(max_tx)}</span>")),
            country_lab = str_replace(country_lab, "NA", "0")) %>% 
     filter(max_tx > 0)
   
   
   df_mmd_ou <- df_mmd_ou %>% 
-    mutate(fill_color = case_when(countryname == "USAID" & otherdisaggregate == "o6mmd" ~ "#0f4453",
-                                  countryname == "USAID" ~ "#78b7c9",
+    mutate(fill_color = case_when(country == "USAID" & otherdisaggregate == "o6mmd" ~ "#0f4453",
+                                  country == "USAID" ~ "#78b7c9",
                                   otherdisaggregate == "o6mmd" ~ scooter,
                                   TRUE ~ scooter_light),
-           lab_share = case_when(countryname == "USAID" & period == max(period) ~ share))
+           lab_share = case_when(country == "USAID" & period == max(period) ~ share))
   
   #identify the MMD share for the largest countries
   top <- df_mmd_ou %>% 
-    filter(countryname != "USAID",
+    filter(country != "USAID",
            otherdisaggregate == "o6mmd",
            period == max(period)) %>% 
     arrange(desc(tx_curr)) %>% 
@@ -150,7 +153,7 @@
     filter(otherdisaggregate == "o6mmd",
            period == max(period)) %>% 
     slice_max(order_by = tx_curr, n = top$n + 1) %>% 
-    pull(countryname)
+    pull(country)
   
 # VIZ ---------------------------------------------------------------------
   
@@ -174,8 +177,7 @@
          title = "USAID HAS WORKED TO ENSURE MORE PATIENTS HAVE ACCESS TO MULTI MONTH DISPENSING (MMD)",
          subtitle = "South Africa, representing a third of USAID's treatment portfolio, has been excluded",
          caption = glue("MMD 3 months or more = 3-5 months and 6 months or more | Source: {msd_source}
-                        SI analytics: {paste(authors, collapse = '/')}
-                     US Agency for International Development")) +
+                        SI analytics: {paste(authors, collapse = '/')} | Ref ID: {ref_id}")) +
     si_style_ygrid() +
     theme(legend.position = "none",
           strip.text.x = element_markdown(family = "Source Sans Pro SemiBold", size = 13))
@@ -189,7 +191,7 @@
   
   #Country Trends
   df_mmd_ou %>%
-    filter(countryname %in% top_cntry) %>%
+    filter(country %in% top_cntry) %>%
     ggplot(aes(period, share, group = otherdisaggregate, color = fill_color, fill = fill_color)) +
     geom_area(alpha = .4, size = .9, position = "identity") +
     geom_point(aes(y = endpoints), na.rm = TRUE) +
@@ -205,8 +207,7 @@
          title = glue("USAID HAS MADE LIMITED GAINS TOWARDS GETTING TREATMENT PATIENTS ON +6 MONTHS OF MMD SINCE FY20Q3"),
          subtitle = "South Africa, representing a third of USAID's treatment portfolio, has been excluded",
          caption = glue("MMD 3 months or more = 3-5 months and 6 months or more | Source: {msd_source}
-                        SI analytics: {paste(authors, collapse = '/')}
-                     US Agency for International Development")) +
+                        SI analytics: {paste(authors, collapse = '/')} | Ref ID: {ref_id}")) +
     si_style_ygrid() +
     theme(panel.spacing.y = unit(.5, "line"),
           panel.spacing.x = unit(.5, "line"),
