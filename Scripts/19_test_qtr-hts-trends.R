@@ -46,7 +46,7 @@ df_hist <- read_csv("Data/Country and Regional Targets_Results 2004-2016.csv",
 
 #Current MSD
 df <- si_path() %>% 
-  return_latest("OU_IM_FY19") %>% 
+  return_latest("OU_IM_FY20") %>% 
   read_msd()
 
 #Archived MSD
@@ -59,11 +59,12 @@ df_arch <- si_path() %>%
 #source info
 msd_source <- source_info()
 
+
 #current period
 curr_fy <- identifypd(df, "year")
 curr_qtr <- identifypd(df, "quarter")
 curr_pd <- source_info(return = "period")
-
+pd_c_or_i <- msd_source %>% str_sub(1,7) # period w/ clean or initial
 
 #HTS_TST dataset
 df_hts <- df %>% 
@@ -72,25 +73,25 @@ df_hts <- df %>%
          standardizeddisaggregate == "Total Numerator") 
 
 df_hts <- df_hts %>%
-  bind_rows(df_hts %>% mutate(fundingagency = "PEPFAR")) %>% 
-  group_by(fiscal_year, fundingagency) %>% 
+  bind_rows(df_hts %>% mutate(funding_agency = "PEPFAR")) %>% 
+  group_by(fiscal_year, funding_agency) %>% 
   summarise(across(c(cumulative), sum, na.rm = TRUE)) %>% 
   ungroup() %>% 
-  filter(fundingagency %in% c("PEPFAR", "USAID")) %>% 
+  filter(funding_agency %in% c("PEPFAR", "USAID")) %>% 
   mutate(source = "MSD") %>% 
   rename(value = cumulative) %>% 
-  pivot_wider(names_from = fundingagency, values_from = value) %>%
+  pivot_wider(names_from = funding_agency, values_from = value) %>%
   group_by(fiscal_year) %>%
   mutate(share = USAID / PEPFAR)  %>%
-  pivot_longer(cols = PEPFAR:USAID, names_to = "fundingagency")
+  pivot_longer(cols = PEPFAR:USAID, names_to = "funding_agency")
 
 df_hist_clean <- df_hist %>% 
   filter(indicator_short_name %in% c("HIV Testing and Counseling Services"),
          measure_name == "Results",
          country_region != "Global",
          dsd_ta == "DSD+TA") %>% 
-  mutate(fundingagency = "PEPFAR") %>% 
-  group_by(fiscal_year = year, fundingagency) %>% 
+  mutate(funding_agency = "PEPFAR") %>% 
+  group_by(fiscal_year = year, funding_agency) %>% 
   summarise(value = sum(measure_value, na.rm = TRUE)) %>% 
   ungroup() %>% 
   mutate(type = "results",
@@ -100,18 +101,20 @@ df_hist_clean <- df_hist %>%
 df_hts <- bind_rows(df_hist_clean, df_hts) %>% 
   rename(hts_tst = value)
 
+### FIGURE OUT WHAT THIS MEANS AND WHETHER TO REMOVE 2021
+
 #prep viz dataset
 df_hts_viz <- df_hts %>% 
   select(-c(type)) %>% 
   filter(fiscal_year <= 2021) %>% 
-  arrange(fundingagency, fiscal_year) %>% 
-  mutate(agency_alpha = ifelse(fundingagency == "USAID", 1, 0.6),
+  arrange(funding_agency, fiscal_year) %>% 
+  mutate(agency_alpha = ifelse(funding_agency == "USAID", 1, 0.6),
          label_hts = glue("patients receiving\n HIV Testing Services"))
 
 #get numbers for title
 title_info_usaid <- df_hts_viz %>% 
   filter(fiscal_year == 2021,
-         fundingagency == "USAID") %>% 
+         funding_agency == "USAID") %>% 
   select(fiscal_year, hts_tst, share) %>% 
   mutate(share = percent(round(share, 2)),
     hts_tst = round(hts_tst, 2),
@@ -119,7 +122,7 @@ title_info_usaid <- df_hts_viz %>%
 
 title_info_pepfar <- df_hts_viz %>% 
   filter(fiscal_year == 2021,
-         fundingagency == "PEPFAR") %>% 
+         funding_agency == "PEPFAR") %>% 
   select(fiscal_year, hts_tst, share) %>% 
   mutate(share = percent(round(share, 2)),
          hts_tst = round(hts_tst, 2),
@@ -128,7 +131,7 @@ title_info_pepfar <- df_hts_viz %>%
 #VIZ ---------------------------------------------------------------------------
 
 df_hts_viz %>% 
-  mutate(value_label = ifelse(fundingagency == "USAID", clean_number(hts_tst, 1), NA)) %>% 
+  mutate(value_label = ifelse(funding_agency == "USAID", clean_number(hts_tst, 1), NA)) %>% 
   ggplot(aes(fiscal_year, hts_tst)) +
   geom_col(aes(alpha = agency_alpha), fill = burnt_sienna, position = "identity", na.rm = TRUE) +
   geom_hline(yintercept = 0, color = "gray40") +
@@ -143,7 +146,7 @@ df_hts_viz %>%
   scale_alpha_identity() +
   labs(x = NULL, y = NULL, fill = NULL,
        title = glue("As of {curr_pd}, USAID provided HIV testing services to \\
-                       {title_info_hts$share} \\
+                       {title_info_usaid$share} \\
                        of PEPFAR's {title_info_pepfar$hts_tst} patients receiving HIV testing services") %>%  toupper(),
        caption = glue("Source: {msd_source} (including FY15-18) + Spotlight FY04-14
                         SI analytics: {paste(authors, collapse = '/')}

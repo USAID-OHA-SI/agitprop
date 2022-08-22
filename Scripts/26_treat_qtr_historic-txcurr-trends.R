@@ -23,7 +23,7 @@
 
 
 # GLOBAL VARIABLES --------------------------------------------------------
-  
+  setwd("~/GitHub/agitprop")
   authors <- c("Aaron Chafetz", "Tim Essam", "Karishma Srikanth")
   
 
@@ -38,9 +38,9 @@
     clean_names()
   
   #Current MSD
-  df <- si_path() %>% 
-    return_latest("OU_IM_FY20") %>% 
-    read_msd()
+    MSD_name <- si_path() %>% 
+    return_latest("OU_IM_FY20") 
+    df<- MSD_name %>% read_msd()
   
   #Archived MSD
   df_arch <- si_path() %>% 
@@ -62,15 +62,15 @@
   
   #create a PEPFAR duplicate and aggregate up to country/global level
   df_tx <- df_tx %>%
-    bind_rows(df_tx %>% mutate(fundingagency = "PEPFAR")) %>% 
+    bind_rows(df_tx %>% mutate(funding_agency = "PEPFAR")) %>% 
     filter(indicator %in% c("TX_CURR", "TX_NEW"),
            standardizeddisaggregate == "Total Numerator") %>% 
-    group_by(fiscal_year, fundingagency, indicator) %>% 
+    group_by(fiscal_year, funding_agency, indicator) %>% 
     summarise(value = sum(cumulative, na.rm = TRUE)) %>% 
     ungroup() %>% 
-    filter(fundingagency %in% c("PEPFAR", "USAID"),
+    filter(funding_agency %in% c("PEPFAR", "USAID"),
            value != 0) %>% 
-    arrange(indicator, fundingagency, fiscal_year) %>% 
+    arrange(indicator, funding_agency, fiscal_year) %>% 
     mutate(source = "MSD")
 
   #limit the historic data for TX_CURR/NEW data and aggregate
@@ -89,7 +89,7 @@
     mutate(indicator = recode(indicator,
                               "Patients Currently Receiving ART" = "TX_CURR",
                               "Patients Newly Receiving ART" = "TX_NEW"),
-           fundingagency = "PEPFAR",
+           funding_agency = "PEPFAR",
            source = "Spotlight") %>% 
     filter(!fiscal_year %in% unique(df_tx$fiscal_year))
   
@@ -103,19 +103,19 @@
                                  TRUE ~ "Newly enrolled on antiretroviral therapy"))
   #add usaid share
   df_tx_viz <- df_tx_viz %>% 
-    pivot_wider(names_from = fundingagency) %>% 
+    pivot_wider(names_from = funding_agency) %>% 
     mutate(usaid_share = USAID/PEPFAR) %>%
-    pivot_longer(c(USAID, PEPFAR), names_to = "fundingagency",
+    pivot_longer(c(USAID, PEPFAR), names_to = "funding_agency",
                  values_drop_na = TRUE) %>% 
-    mutate(usaid_share = case_when(fundingagency == "USAID" ~ usaid_share)) %>% 
-    arrange(indicator, fundingagency, fiscal_year)
+    mutate(usaid_share = case_when(funding_agency == "USAID" ~ usaid_share)) %>% 
+    arrange(indicator, funding_agency, fiscal_year)
   
   #data point for context
   df_curr_val <- df_tx_viz %>% 
     filter(fiscal_year == max(fiscal_year),
            indicator == "TX_CURR") %>%
-    select(fiscal_year, indicator, fundingagency, value) %>% 
-    pivot_wider(names_from = fundingagency) %>% 
+    select(fiscal_year, indicator, funding_agency, value) %>% 
+    pivot_wider(names_from = funding_agency) %>% 
     mutate(usaid_share = USAID/PEPFAR)
 
 # VIZ ---------------------------------------------------------------------
@@ -123,7 +123,7 @@
   v <- df_tx_viz %>% 
     filter(indicator == "TX_CURR") %>% 
     ggplot(aes(fiscal_year, value)) +
-    geom_col(aes(alpha = bar_alpha, fill = fct_rev(fundingagency)),
+    geom_col(aes(alpha = bar_alpha, fill = fct_rev(funding_agency)),
              position = "identity") +
     geom_hline(yintercept = seq(3e6, 18e6, 3e6), color = "white") +
     scale_y_continuous(labels = unit_format(1, unit = "M", scale = 1e-6),
@@ -174,9 +174,16 @@
              curvature = .4,
              color = "white")
   
-  si_save("Graphics/26_treat_qtr_historic-txcurr-trends-4-22.svg")
+  #si_save("Graphics/26_treat_qtr_historic-txcurr-trends-4-22.svg")
   
- 
+
+  init_or_clean<-ifelse(str_detect(MSD_name, "v1"), "i",
+                    ifelse(str_detect(MSD_name, "v2"), "c", "error"))
+  
+#  glue("Images/26_treat_qtr_historic-txcurr-trends-no-percent_{curr_pd}{init_or_clean}") %>%
+#  si_save()
+  
+
   v_ann +
     geom_text(data = . %>% filter(fiscal_year != max(fiscal_year)),
               aes(label = percent(usaid_share, 1)), na.rm = TRUE,
@@ -185,6 +192,8 @@
               aes(label = percent(usaid_share, 1)), na.rm = TRUE,
               family = "Source Sans Pro", color = moody_blue, vjust = -.8)
   
-  si_save("Graphics/27_treat_qtr_historic-txcurr-trends-share-4-22.svg")
+  #si_save("Graphics/27_treat_qtr_historic-txcurr-trends-share-4-22.svg")
+  glue("Images/26_treat_qtr_historic-txcurr-trends_{curr_pd}{init_or_clean}") %>%
+    si_save()
   
   

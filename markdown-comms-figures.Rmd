@@ -1,0 +1,62 @@
+---
+title: "Communications Visuals"
+author: "Karishma Srikanth, Nada Petrovic"
+date: "8/9/2022"
+output: html_document
+reference_doc: template.pptx
+fig_width: 10
+fig_height: 5.625
+dpi: 320
+---
+
+```{r setup, include=FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(imager)
+library(glamr)
+library(gophr)
+knitr::opts_chunk$set(echo = TRUE)
+curr_pd <- source_info(return = "period")
+pd_c_or_i <- source_info() %>% str_sub(1,7)
+init_or_clean <- ifelse(str_detect(pd_c_or_i,"c"),"clean","initial")
+```
+
+## Period `r curr_pd` `r init_or_clean`
+
+### ART scale-up
+```{r ART, echo = FALSE, warning=FALSE, message=FALSE}
+ library(glue)
+ script_name<-"26_treat_qtr_historic-txcurr-trends.R"
+ rs<-strsplit(script_name, split=".", fixed =TRUE)
+ 
+ fig_name<-glue("{rs[[1]][1]}_{pd_c_or_i}.png")
+```
+[Slide 10 in Comms Slide Deck](https://docs.google.com/presentation/d/1Ckz3inT0Qy-f0cKlilK1pffCfwFzOuEMxMbqVXTK3Q4/edit#slide=id.g10ba93e86f3_2_95)
+
+Figure name (in Images folder): `r fig_name`
+
+```{r PLOT, echo = FALSE, warning=FALSE, message=FALSE, fig.asp=0.62}
+library(grid) 
+source(glue("Scripts/{script_name}"))
+ img <-load.image(glue("Images/{fig_name}")) 
+img %>% grid.raster()
+ # plot(img, axes=FALSE)
+```
+
+
+### TESTING services
+```{r TEST, echo = FALSE, warning=FALSE, message=FALSE}
+ library(glue)
+ #script_name<-"26_treat_qtr_historic-txcurr-trends.R"
+ script_name<-"19_test_qtr-hts-trends.R"
+ rs<-strsplit(script_name, split=".", fixed =TRUE)
+ fig_name<-glue("{rs[[1]][1]}_{curr_pd}{substring(init_or_clean,1,1)}.png")
+```
+[Slide 11 in Comms Slide Deck](https://docs.google.com/presentation/d/1Ckz3inT0Qy-f0cKlilK1pffCfwFzOuEMxMbqVXTK3Q4/edit#slide=id.g10ba93e86f3_2_70)
+
+Figure name (in Images folder): `r fig_name`
+
+```{r PLOT, echo = FALSE, warning=FALSE, message=FALSE, fig.asp=0.62}
+```
+
+
+
