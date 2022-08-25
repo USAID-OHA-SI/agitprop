@@ -29,14 +29,14 @@
   authors <- c("Aaron Chafetz", "Tim Essam", "Karishma Srikanth")
   
   plot_title <- "STEADY DECLINE IN THE GLOBAL NUMBER OF <span style= 'color:#2057a7;'> 
-  NEW HIV INFECTIONS</span> AND <span style = 'color:#c43d4d;'> AIDS-RELATED DEATHS </span> SINCE EARLY 2000s"
+  NEW HIV INFECTIONS</span> AND <span style = 'color:#c43d4d;'> TOTAL PLHIV DEATHS </span> SINCE EARLY 2000s"
   
   source <- source_note
   
   # Creates a new dataframe so you can call geom_richtext() in the viz flow. This allows for markedup annotations.
   note_df <- tibble(
     label = c("**HIV epidemic control is the point at which<br> the number of </span><span style= 'color:#2057a7;'>new HIV infections</span>
-    falls<br> below the number of <span style= 'color:#c43d4d;'>AIDS-related<br>deaths</span>**"),
+    falls<br> below the number of <span style= 'color:#c43d4d;'>total deaths to PLHIV</span>**"),
     year = c(2010), 
     value = c(0.4e6))
   
@@ -48,18 +48,42 @@
   
 # IMPORT ------------------------------------------------------------------
   # Grab data from google drive
-  epi_glbl <- range_speedread("1Vt54N2W51WEWY0XlOr6vP4pa3F-7AwpXxyRx9Y9Hcq4", sheet = "HIV Estimates - Integer") %>% 
+  
+  epi_glbl <- pull_unaids("HIV Estimates", FALSE) %>% 
     filter(country == "Global", str_detect(indicator, "(AIDS Related|New HIV Infections)"))
+  
+  #pull Total PLHIV death data
+  g_id <- "1CSVOauu2gyq9Am0eCl7TgpAeB1Xd3dCtE_Oc_yk3cI4"
+  
+  df_deaths <- range_speedread(ss = g_id, sheet = "UNAIDS_epi_control") %>% 
+    filter(indicator == "Number Total Deaths HIV Pop")
 
   # Check that filters have not changed
   epi_glbl %>% count(country) %>% prinf()
   
+  #grab total deaths
+  total_deaths <- df_deaths %>% 
+    #select(-c(iso2, geo_level)) %>% 
+    filter(age == "all",
+           sex == "all",
+           country == "Global") %>% 
+    select(c(country, year, indicator, estimate)) %>% 
+    spread(indicator, estimate) %>% 
+    janitor::clean_names() 
+  
   epi_viz <- 
     epi_glbl %>% 
-    filter(age == "15+", stat == "est") %>% 
-    spread(indicator, value) %>% 
+    filter(age == "All") %>% 
+    select(-c(lower_bound, upper_bound)) %>% 
+    spread(indicator, estimate) %>%
     janitor::clean_names() %>% 
-    mutate(epi_gap = new_hiv_infections - aids_related_deaths)
+    left_join(total_deaths, by = c("country", "year")) %>% 
+    mutate(epi_gap = number_new_hiv_infections - number_total_deaths_hiv_pop)
+  
+
+    
+    
+    
   
 ## FT VIZ ---------------------------------------------------------
   # continent
@@ -68,23 +92,23 @@
   viz <- 
     epi_viz %>% 
     ggplot(aes(x = year)) +
-    geom_area(aes(y = new_hiv_infections), fill = "#C6D5E9", alpha = 0.95) +
-    geom_area(aes(y = -aids_related_deaths), fill = "#F1CED2",  alpha = 0.95) +
-    geom_line(aes(y = new_hiv_infections), color = denim, size = 1) +
-    geom_line(aes(y = -aids_related_deaths), color = old_rose, size = 1) +
+    geom_area(aes(y = number_new_hiv_infections), fill = "#C6D5E9", alpha = 0.95) +
+    geom_area(aes(y = -number_total_deaths_hiv_pop), fill = "#F1CED2",  alpha = 0.95) +
+    geom_line(aes(y = number_new_hiv_infections), color = denim, size = 1) +
+    geom_line(aes(y = -number_total_deaths_hiv_pop), color = old_rose, size = 1) +
     geom_line(aes(y = epi_gap), color = "white", size = 0.25) +
     geom_point(data = . %>% filter(year == max(year)), 
-               aes(y = new_hiv_infections, fill = denim), shape = 21, color = "white", size = 3)+
+               aes(y = number_new_hiv_infections, fill = denim), shape = 21, color = "white", size = 3)+
     geom_point(data = . %>% filter(year == max(year)), 
-               aes(y = -aids_related_deaths, fill = old_rose), shape = 21, color = "white", size = 3) + 
+               aes(y = -number_total_deaths_hiv_pop, fill = old_rose), shape = 21, color = "white", size = 3) + 
     geom_text(data = . %>% filter(year == max(year)), 
-              aes(y = new_hiv_infections, color = denim, 
-                  label = paste0(round(new_hiv_infections/1000000, digits = 3), "M")),
+              aes(y = number_new_hiv_infections, color = denim, 
+                  label = paste0(round(number_new_hiv_infections/1000000, digits = 3), "M")),
               hjust = -0.3, size = 12/.pt,
               family = "Source Sans Pro SemiBold") +
     geom_text(data = . %>% filter(year == max(year)), 
-              aes(y = -aids_related_deaths, color = old_rose, 
-                  label = paste0(abs(aids_related_deaths/1000) %>% comma(1.0), "K")),
+              aes(y = -number_total_deaths_hiv_pop, color = old_rose, 
+                  label = paste0(abs(number_total_deaths_hiv_pop/1000) %>% comma(1.0), "K")),
               hjust = -0.3, size = 12/.pt,
               family = "Source Sans Pro SemiBold") +
     scale_fill_identity() +
@@ -105,7 +129,7 @@
     viz +
     geom_richtext(data = note_df, aes(x = year, y = value, label = label),
                   fill = NA, label.color = NA, # remove background and outline
-                  label.padding = grid::unit(rep(0, 4), "pt"), hjust = 0, 
+                  label.padding = grid::unit(rep(0, 4), "pt"), hjust = 0, vjust = 0.7,
                   size = 12/.pt, color = grey90k) +
     annotate("curve",
              x = 2017, y = epi_gap_end + 0.5e6, xend = 2020, yend = epi_gap_end,
@@ -117,8 +141,8 @@
              family = "Source Sans Pro", color = suva_grey, size = 14/.pt) +
     annotate(geom = "text", x = 1995, y = 2.7e6, label = c("New HIV Infections"), hjust = 0,
              family = "Source Sans Pro SemiBold", color = denim, size = 14/.pt) +
-    annotate(geom = "text", x = 1997, y = -1.5e6, label = c("AIDS-related Deaths"), hjust = 0,
-             family = "Source Sans Pro SemiBold", color = old_rose, size = 14/.pt) +
+    annotate(geom = "text", x = 1997, y = -1.5e6, label = c("Total Deaths to PLHIV"), hjust = 0,
+             vjust = -1, family = "Source Sans Pro SemiBold", color = old_rose, size = 14/.pt) +
     labs(x = NULL, y = NULL,
          title = plot_title,
          caption =  glue("\n{source}
@@ -136,25 +160,25 @@
   viz_excel <- 
     epi_viz %>% 
     ggplot(aes(x = year)) +
-    geom_area(aes(y = new_hiv_infections), fill = "#C6D5E9") +
-    geom_area(aes(y = aids_related_deaths), fill = "#F1CED2") +
-    geom_line(aes(y = new_hiv_infections), color = "white", size = 3) +
-    geom_line(aes(y = new_hiv_infections), color = denim, size = 1) +
-    geom_line(aes(y = aids_related_deaths), color = "white", size = 3) +
-    geom_line(aes(y = aids_related_deaths), color = old_rose, size = 1) +
+    geom_area(aes(y = number_new_hiv_infections), fill = "#C6D5E9") +
+    geom_area(aes(y = number_total_deaths_hiv_pop), fill = "#F1CED2") +
+    geom_line(aes(y = number_new_hiv_infections), color = "white", size = 3) +
+    geom_line(aes(y = number_new_hiv_infections), color = denim, size = 1) +
+    geom_line(aes(y = number_total_deaths_hiv_pop), color = "white", size = 3) +
+    geom_line(aes(y = number_total_deaths_hiv_pop), color = old_rose, size = 1) +
     
     geom_point(data = . %>% filter(year == max(year)), 
-               aes(y = new_hiv_infections, fill = denim), shape = 21, color = "white", size = 3)+
+               aes(y = number_new_hiv_infections, fill = denim), shape = 21, color = "white", size = 3)+
     geom_point(data = . %>% filter(year == max(year)), 
-               aes(y = aids_related_deaths, fill = old_rose), shape = 21, color = "white", size = 3) + 
+               aes(y = number_total_deaths_hiv_pop, fill = old_rose), shape = 21, color = "white", size = 3) + 
     geom_text(data = . %>% filter(year == max(year)), 
-              aes(y = new_hiv_infections, color = denim, 
-                  label = paste0(round(new_hiv_infections/1000000, digits = 3), "M")),
+              aes(y = number_new_hiv_infections, color = denim, 
+                  label = paste0(round(number_new_hiv_infections/1000000, digits = 3), "M")),
               hjust = -0.3, size = 12/.pt,
               family = "Source Sans Pro SemiBold") +
     geom_text(data = . %>% filter(year == max(year)), 
-              aes(y = aids_related_deaths, color = old_rose, 
-                  label = paste0(abs(aids_related_deaths/1000) %>% comma(1.0), "K")),
+              aes(y = number_total_deaths_hiv_pop, color = old_rose, 
+                  label = paste0(abs(number_total_deaths_hiv_pop/1000) %>% comma(1.0), "K")),
               hjust = -0.3, size = 12/.pt,
               family = "Source Sans Pro SemiBold") +
     scale_fill_identity() +
@@ -179,7 +203,7 @@
                   size = 12/.pt, color = grey90k) +
     annotate(geom = "text", x = 1994, y = 2.4e6, label = c("New HIV Infections"), hjust = 0,
              family = "Source Sans Pro SemiBold", color = denim, size = 14/.pt) +
-    annotate(geom = "text", x = 2000.5, y = 1.2e6, label = c("AIDS-related Deaths"), hjust = 0,
+    annotate(geom = "text", x = 2000.5, y = 1.2e6, label = c("Total Deaths of PLHIV"), hjust = 0,
              family = "Source Sans Pro SemiBold", color = old_rose, size = 14/.pt) +
     labs(x = NULL, y = NULL,
          title = plot_title,
