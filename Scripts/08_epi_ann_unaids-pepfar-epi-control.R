@@ -33,22 +33,28 @@
   authors <- c("Aaron Chafetz", "Tim Essam", "Karishma Srikanth")
   
   #source info & definition of epidemic control
-  source <- "UNAIDS 2021 estimates" 
-  date_pulled <- "July 2021"
+  source <- source_note 
+  date_pulled <- "August 2022"
   
-  note <- str_wrap("HIV epidemic control is the point at which the number number of new HIV infections falls below the number of AIDS-related deaths", width = 40)
+  note <- str_wrap("HIV epidemic control is the point at which the number number of new HIV infections falls below the number of total deaths to PLHIV", width = 40)
   
   # epi_control <- str_wrap("PEPFAR defines national HIV epidemic control as the point at which the total number of new HIV infections falls below the total number of deaths from all causes among HIV-infected individuals, with both new infections and deaths among HIV-infected individual slowing and declining.", width = 100)
-  epi_control <- "Four PEPFAR countries have reached epidemic control, where new infections falls below deaths and deaths are declining. "
+  epi_control <- "11 PEPFAR countries have reached epidemic control, where new infections falls below total deaths and total deaths are declining. "
   
-  plot_title <- "STEADY DECLINE IN THE NUMBER OF <span style= 'color:#2057a7;'> NEW HIV INFECTIONS</span> AND <span style = 'color:#c43d4d;'> AIDS-RELATED DEATHS </span> SINCE THE EARLY 2000s"
+  plot_title <- "STEADY DECLINE IN THE NUMBER OF <span style= 'color:#2057a7;'> NEW HIV INFECTIONS</span> AND <span style = 'color:#c43d4d;'> TOTAL DEATHS TO PLHIV </span> SINCE THE EARLY 2000s"
   
   #focal countries
   sel_cntry <- c("Uganda", "Kenya", "Namibia", "Eswatini")
 
 # IMPORT ------------------------------------------------------------------
 
-  df_epi <- pull_unaids("HIV Estimates - Integer")
+  df_epi <- pull_unaids("HIV Estimates", TRUE)
+  
+  #pull Total PLHIV death data
+  g_id <- "1CSVOauu2gyq9Am0eCl7TgpAeB1Xd3dCtE_Oc_yk3cI4"
+  
+  df_deaths <- range_speedread(ss = g_id, sheet = "UNAIDS_epi_control") %>% 
+    filter(indicator == "Number Total Deaths HIV Pop")
 
 
 # MUNGE -------------------------------------------------------------------
@@ -65,42 +71,54 @@
   #   mutate(diff = `2020` - `2003`)
   
   df_epi_pepfar <- df_epi %>% 
-    filter(stat == "est",
-           age == "all",
-           indicator %in% c("AIDS Related Deaths", "New HIV Infections")) %>%
+    filter(
+      #stat == "est",
+           age == "All",
+           indicator %in% c("Number New HIV Infections")) %>%
     # semi_join(pepfar_country_list, by = c("iso" = "countryname_iso")) %>%
-    select(year, country, indicator, value) %>%
+    select(year, country, indicator, estimate) %>%
     arrange(country, indicator, year)  
+  
+  #grab total deaths
+  total_deaths <- df_deaths %>% 
+    #select(-c(iso2, geo_level)) %>% 
+    filter(age == "all",
+           sex == "all") %>% 
+    select(c(country, year, indicator, estimate)) %>% 
+    spread(indicator, estimate) %>% 
+    janitor::clean_names() %>% 
+    rename(total_deaths = number_total_deaths_hiv_pop)
 
   df_epi_pepfar <- df_epi_pepfar %>% 
     mutate(indicator = word(indicator, -1) %>% tolower) %>%
-    pivot_wider(names_from = "indicator") %>%
+    pivot_wider(names_from = "indicator", values_from = "estimate") %>%
+    left_join(total_deaths, by = c("year", "country")) %>% 
     group_by(country) %>% 
-    mutate(declining_deaths = deaths - lag(deaths, order_by = year) <= 0) %>% 
+    mutate(declining_deaths = total_deaths - lag(total_deaths, order_by = year) <= 0) %>% 
     ungroup() %>% 
-    mutate(infections_below_deaths = infections < deaths,
-           ratio = infections / deaths,
+    mutate(infections_below_deaths = infections < total_deaths,
+           ratio = infections / total_deaths,
            direction_streak = sequence(rle(declining_deaths)$lengths),
            epi_control = declining_deaths == TRUE & infections_below_deaths == TRUE) 
   
   
   df_epi_pepfar <- df_epi_pepfar %>% 
-    pivot_longer(c(infections, deaths), names_to = "indicator") %>% 
+    pivot_longer(c(infections, total_deaths), names_to = "indicator") %>% 
     arrange(country, indicator, year) %>% 
-    mutate(value_mod = ifelse(indicator == "deaths", -value, value),
-           fill_color = ifelse(indicator == "deaths", old_rose, denim))
+    mutate(value_mod = ifelse(indicator == "total_deaths", -value, value),
+           fill_color = ifelse(indicator == "total_deaths", old_rose, denim))
   
   epi_cntry <- df_epi_pepfar %>% 
     filter(year == max(year),
            indicator == "infections",
            epi_control == TRUE) %>%
            # country %in% sel_cntry) %>% 
-    arrange(desc(value)) %>% 
+    arrange(desc(value)) %>%
     pull(country)
   
   
   df_viz_pepfar <- df_epi_pepfar %>% 
-    mutate(country = "All PEPFPAR") %>% 
+    mutate(country = "All PEPFAR") %>% 
     group_by(country, year, indicator, fill_color) %>% 
     summarise(across(c(value, value_mod), sum, na.rm = TRUE), .groups = "drop") %>% 
     mutate(val_lab = case_when(year == max(year) ~ number(value, 1, scale = 1e-3, suffix = "k")),
@@ -152,7 +170,7 @@
     geom_text(aes(label = val_lab), na.rm = TRUE,
               hjust = -0.3,
               family = "Source Sans Pro Light") +
-    facet_wrap(~country) +
+    facet_wrap(~country, nrow = 4, scales = "free_y") +
     scale_y_continuous(labels = ~ label_number_si()(abs(.))) +
     scale_x_continuous(breaks = seq(1990, 2025, 10)) +
     scale_fill_identity(aesthetics = c("fill", "color")) +
