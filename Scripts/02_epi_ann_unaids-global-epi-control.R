@@ -3,7 +3,7 @@
 # PURPOSE:  Global epidemic control curves 
 # LICENSE:  MIT
 # DATE:     2021-07-19
-# UPDATED:  2021-12-03
+# UPDATED:  2022-08-25 (new 2022 UNAIDS data)
 # NOTE:     Created based on request from FO "2 visuals for AHOP deck" -- 2021-07-16
 
 
