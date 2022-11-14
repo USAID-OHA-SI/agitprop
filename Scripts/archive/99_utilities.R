@@ -182,7 +182,7 @@ query_datim <- function(ctry, ctry_uid, org_lvl, type, username, password, baseu
   
   full_url <- paste0(core_url, type_url, end_url)
   
-  df <- glamr::datim_process_query(full_url, username, password)
+  df <- grabr::datim_process_query(full_url, username, password)
   
   return(df)
 }
