@@ -1,0 +1,268 @@
+---
+title: "World AIDS Day Talking Points"
+author: "Karishma Srikanth, Nada Petrovic, and Jessica Hoehner"
+date: "11/9/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+  library(tidyverse)
+  library(glitr)
+  library(glamr)
+  library(gophr)
+  library(extrafont)
+  library(scales)
+  library(tidytext)
+  library(patchwork)
+  library(ggtext)
+  library(glue)
+  library(janitor)
+  library(lubridate)
+  library(googlesheets4)
+```
+
+## World AIDS Day Talking Points: 2022
+
+```{r cars, include=FALSE, echo=FALSE}
+#Current MSD
+msd_path <- si_path() %>% 
+  return_latest("OU_IM_FY20")
+
+get_metadata(msd_path)
+
+df <- read_msd(msd_path)
+
+# load source functions
+#source("Scripts/archive/99_utilities.R")
+
+#LOCAL PARTNER
+#Read in the google sheet hyperfile with local partner
+sheet_id <- "1MQviknJkJDttGdNEJeNaYPKmHCw6BqPuJ0C5cslV5IE"
+
+df_partner <- read_sheet(sheet_id, sheet = "MechID-PartnerType", range = "A:B") %>% 
+  clean_names() %>% 
+  rename(mech_code = mechanism_id) %>% 
+  mutate(mech_code = as.character(mech_code),
+         partner_type = case_when(partner_type == "Regional" ~ "Local",
+                                  partner_type == "TBD Local" ~ "Local", TRUE ~ partner_type))
+
+
+#clean number function
+clean_number <- function(x, digits = 0){
+  dplyr::case_when(x >= 1e9 ~ glue("{round(x/1e9, digits)} billion"),
+                   x >= 1e6 ~ glue("{round(x/1e6, digits)} million"),
+                   x >= 1e3 ~ glue("{round(x/1e3, digits)} thousand"),
+                   TRUE ~ glue("{x}"))
+}
+
+load_secrets()
+
+```
+
+## Topline Achievements
+
+Through PEPFAR, the U.S. government has saved more than 21 million lives, prevented millions of HIV infections, and helped 20 countries with HIV burden achieve epidemic control of HIV or reach 95-95-95 treatment targets.  Country leadership on sustaining the HIV response will require bold political, programmatic, and financial leadership.
+
+```{r tx_curr, echo=FALSE, include = FALSE}
+
+ # Derived from agitprop/Scripts/26_treat_qtr_historic-txcurr-trends.R
+  
+  #create a PEPFAR duplicate and aggregate up to country/global level
+  df_tx <- df %>%
+    bind_rows(df %>% mutate(funding_agency = "PEPFAR")) %>% 
+    filter(indicator %in% c("TX_CURR", "TX_NEW"),
+           standardizeddisaggregate == "Total Numerator") %>% 
+    group_by(fiscal_year, funding_agency, indicator) %>% 
+    summarise(value = sum(cumulative, na.rm = TRUE)) %>% 
+    ungroup() %>% 
+    filter(funding_agency %in% c("PEPFAR", "USAID"),
+           value != 0) %>% 
+    arrange(indicator, funding_agency, fiscal_year) %>% 
+    mutate(source = "MSD")
+
+ df_tx <- df_tx %>% 
+    filter(fiscal_year == metadata$curr_fy,
+           indicator == "TX_CURR") %>%
+    select(fiscal_year, indicator, funding_agency, value) %>% 
+    pivot_wider(names_from = funding_agency) %>% 
+    mutate(usaid_share = USAID/PEPFAR)  
+  
+  tx_val <<- df_tx %>% 
+    mutate(USAID_Lab = USAID %>% clean_number()) %>%
+    pull(USAID_Lab) 
+
+
+```
+```{r VLS, echo=FALSE, include = FALSE}
+
+# derived from agitprop/Scripts/42_trend_ou_viral_load_coverage.R
+
+df_vls_global <- df %>% 
+    clean_indicator() %>% 
+    clean_agency() %>% 
+    clean_countries(colname = "country") %>% 
+   filter(
+      fiscal_year != metadata$curr_fy + 1,
+      funding_agency == "USAID",
+      indicator %in% c("TX_CURR", "TX_PVLS_D", "TX_PVLS"),
+      standardizeddisaggregate %in% c("Total Numerator", "Total Denominator")
+    ) %>% 
+    group_by(fiscal_year, funding_agency, country, indicator) %>% 
+    summarise(across(starts_with("qtr"), sum, na.rm = T), .groups = "drop") %>% 
+    reshape_msd() %>% 
+    select(-period_type) %>% 
+    pivot_wider(names_from = indicator, values_from = value) %>% 
+    group_by(funding_agency, country) %>% 
+    mutate(TX_CURR_LAG2 = lag(TX_CURR, 2, order_by = period)) %>% 
+    relocate(TX_CURR_LAG2, .before = TX_CURR) %>% 
+    filter(!is.na(TX_PVLS_D), TX_PVLS_D > 0) %>% 
+    group_by(period, funding_agency) %>% 
+    summarise(across(starts_with("TX"), sum, na.rm = T), .groups = "drop") %>% 
+    mutate(VLC = TX_PVLS_D / TX_CURR_LAG2,
+           VLS = TX_PVLS/TX_PVLS_D)
+
+  df_tx_ou <- df %>% 
+    clean_indicator() %>% 
+    clean_agency() %>% 
+    clean_countries(colname = "country") %>% 
+    filter(
+      fiscal_year != metadata$curr_fy + 1,
+      funding_agency == "USAID",
+      indicator %in% c("TX_CURR", "TX_PVLS_D", "TX_PVLS"),
+      standardizeddisaggregate %in% c("Total Numerator", "Total Denominator")
+    ) %>% 
+    group_by(fiscal_year, funding_agency, country, indicator) %>% 
+    summarise(across(starts_with("qtr"), sum, na.rm = T), .groups = "drop") %>% 
+    reshape_msd() %>% 
+    dplyr::select(-period_type) %>% 
+    pivot_wider(names_from = indicator, values_from = value) %>% 
+    group_by(funding_agency, country) %>% 
+    mutate(TX_CURR_LAG2 = lag(TX_CURR, 2, order_by = period),
+           VLC = TX_PVLS_D / TX_CURR_LAG2,
+           VLS = TX_PVLS/TX_PVLS_D) %>% 
+    ungroup() %>% 
+    relocate(TX_CURR_LAG2, .before = TX_CURR) %>% 
+    filter(!is.na(TX_PVLS_D), TX_PVLS_D > 0)
+
+glbl_vls <<- df_vls_global %>%
+  filter(period == metadata$curr_pd) %>%
+  mutate(VLS_pct = percent(VLS)) %>%
+  pull(VLS_pct)
+
+meet_90_vls <<- df_tx_ou %>%
+  filter(period == metadata$curr_pd, VLS >= .9) %>%
+  distinct(country) %>% nrow()
+
+meet_95_vls <<- df_tx_ou %>%
+  filter(period == metadata$curr_pd, VLS >= .95) %>%
+  distinct(country) %>% nrow()
+
+```
+
+
+```{r HTS, echo=FALSE, include = FALSE}
+
+  # derived from agitprop/Scripts/19_test_qtr-hts-trends.R
+
+#HTS_TST dataset
+munge_hts <- function(indic) {
+  df_hts <- df %>% 
+    filter(indicator == indic,
+           standardizeddisaggregate == "Total Numerator") 
+  
+  df_hts <- suppressMessages(
+    df_hts %>%
+    bind_rows(df_hts %>% mutate(funding_agency = "PEPFAR")) %>%
+    group_by(fiscal_year, funding_agency) %>%
+    summarise(across(c(cumulative), sum, na.rm = TRUE)) %>%
+    ungroup() %>%
+    filter(funding_agency %in% c("PEPFAR", "USAID")) %>%
+    mutate(source = "MSD") %>%
+    rename(value = cumulative) %>%
+    pivot_wider(names_from = funding_agency, values_from = value) %>%
+    group_by(fiscal_year) %>%
+    mutate(share = USAID / PEPFAR)  %>%
+    pivot_longer(cols = PEPFAR:USAID, names_to = "funding_agency"))
+  
+  hts_val <- df_hts %>% 
+    filter(fiscal_year == metadata$curr_fy,
+           funding_agency == "USAID") %>% 
+    select(fiscal_year, value, share) %>% 
+    mutate(share = percent(round(share, 2)),
+           value = round(value, 2),
+           value = value %>%  clean_number()) %>% 
+    pull(value)
+  
+  
+  return(hts_val)
+}
+
+hts_val <- munge_hts("HTS_TST")
+hts_pos_val <- munge_hts("HTS_TST_POS")
+```
+```{r site counts, echo=FALSE, include = FALSE}
+
+  # still figuring out API call for this TP - just run this script on your own
+
+ # source("Scripts/xx_hss_ann_usaid-site-count.R")
+
+```
+
+```{r LP, echo=FALSE, include = FALSE}
+
+#result_type = value or share
+grab_lp_results <- function(indic, result_type) {
+  
+  df_munge <- suppressMessages(df %>% 
+    # bind_rows(df_arch) %>%
+    left_join(df_partner, by = c("mech_code")) %>%
+    filter(funding_agency == "USAID",
+           indicator == indic,
+           standardizeddisaggregate == "Total Numerator") %>% 
+    group_by(funding_agency, fiscal_year, indicator, partner_type) %>% 
+    summarise(across(cumulative, sum, na.rm = TRUE)) %>%
+    ungroup() %>% 
+    filter(partner_type != "TBD") %>%
+    #filter(fiscal_year != 2022) %>%
+    pivot_wider(names_from = partner_type, values_from = cumulative) %>%
+    group_by(fiscal_year) %>%
+    mutate(Total = International + Local,
+           share = Local / Total)  %>%
+    pivot_longer(cols = International:Total, names_to = "partner_type"))
+  
+  title_info_lp <- df_munge %>% 
+    filter(partner_type == "Local", fiscal_year == metadata$curr_fy) %>% 
+    select(fiscal_year, indicator, value, share) %>% 
+    mutate(
+      value = value %>%  clean_number(0), #change to 1 if you want 1 decimal accuracy
+      share = percent(round(share, 2))) %>% 
+    pull(result_type)
+  
+  return(title_info_lp)
+}
+
+tx_lp_val <- grab_lp_results("TX_CURR", "value")
+tx_lp_share <- grab_lp_results("TX_CURR", "share")
+hts_lp_val <- grab_lp_results("HTS_TST", "value")
+
+
+```
+
+1. Currently, USAID provides over **`r tx_val`** clients with life-saving HIV-treatment. **`r glbl_vls`** of these beneficiaries who received a viral load test are virally suppressed, meaning that they can live longer, healthier lives and the virus can no longer be transmitted.
+ 
+2. Over the last year, USAID has provided HIV testing services to over **`r hts_val`** people. 
+
+3. Over the last year, USAID helped over **`r hts_pos_val`** people learn of their HIV positive status. 
+
+4. Over the last year, USAID and its partners supported **`r meet_90_vls`** countries to reach over 90 percent viral load suppression, and of those, **`r meet_95_vls`** countries reached over 95 percent viral load suppression.
+
+5. USAID investments strengthened host country systems that drive responsive, resilient, and enduring health care through more than *10,000* HIV testing sites, nearly *9,000* HIV treatment sites, and *5,000+* sites that provide lab-based or point-of-care testing making critical services accessible in over 50 supported PEPFAR countries.
+
+6. The partnerships between USAID and local organizations and government are critical for achieving HIV epidemic control. In 2021, *$669 million* went directly to PEPFAR local partners, up from *$451 million* in 2018. In 2021, local partners helped over **`r hts_lp_val`** learn their HIV status and provided nearly **`r tx_lp_val`** with life-saving HIV medication, supporting **`r tx_lp_share`** of all USAID-supported people living with HIV.
+
+## Achievements related to Key Populations 
+
+7. Over the last year, USAID initiated *175,000* members of key populations on PrEP.
+
