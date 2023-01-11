@@ -4,7 +4,7 @@
 # REF ID:   a92e1bd0
 # LICENSE:  MIT
 # DATE:     2021-12-01
-# UPDATED:  2022-06-01
+# UPDATED:  2023-01-11
 # NOTE:     adapted from agitprop/11_MMD.R & catch-22/gpm_usaid_mmd-trends-by-country.R
 
 
@@ -31,6 +31,13 @@
   curr_qtr <- source_info(return = "quarter")
   
   ref_id <- "a92e1bd0"
+  
+  clean_number <- function(x, digits = 0){
+    dplyr::case_when(x >= 1e9 ~ glue("{round(x/1e9, digits)}B"),
+                     x >= 1e6 ~ glue("{round(x/1e6, digits)}M"),
+                     x >= 1e3 ~ glue("{round(x/1e3, digits)}K"),
+                     TRUE ~ glue("{x}"))
+  }
   
 # IMPORT ------------------------------------------------------------------
   
@@ -124,8 +131,8 @@
            max_mmd = max(max_mmd)) %>% 
     ungroup() %>% 
     mutate(country_lab = case_when(max_tx == max(max_tx) ~ 
-                                     glue("{country}<br><span style = 'font-size:8pt'>{label_number_si()(max_mmd)} / {label_number_si()(max_tx)} <span style = 'font-size:6pt'>(+6 MMD/TX_CURR)</span>"),
-                                   TRUE ~ glue("{country}<br><span style = 'font-size:8pt'>{label_number_si()(max_mmd)} / {label_number_si()(max_tx)}</span>")),
+                                     glue("{country}<br><span style = 'font-size:8pt'>{clean_number(max_mmd)} / {clean_number(max_tx)} <span style = 'font-size:6pt'>(+6 MMD/TX_CURR)</span>"),
+                                   TRUE ~ glue("{country}<br><span style = 'font-size:8pt'>{clean_number(max_mmd)} / {clean_number(max_tx)}</span>")),
            country_lab = str_replace(country_lab, "NA", "0")) %>% 
     filter(max_tx > 0)
   
@@ -169,7 +176,7 @@
     geom_errorbar(aes(ymax = tx_curr, ymin = tx_curr), color = trolley_grey) +
     # facet_wrap(~otherdisaggregate) +
     facet_wrap(~otherdisaggregate_md) +
-    scale_x_discrete(breaks = c("FY20Q2", "FY20Q4", "FY21Q2", "FY21Q4", "FY22Q2")) +
+    scale_x_discrete(breaks = c("FY20Q2", "FY20Q4", "FY21Q2", "FY21Q4", "FY22Q2", "FY22Q4")) +
     scale_fill_identity() +
     scale_y_continuous(labels = label_number_si(),
                        position = "right", expand = c(.005, .005)) +
@@ -185,8 +192,8 @@
           
   
 
-  si_save("Graphics/29a_treat_qtr_mmd-usaid.svg")  
-  si_save("Images/29a_treat_qtr_mmd-usaid.png")  
+  si_save(glue("Graphics/29a_treat_qtr_mmd-usaid_{curr_pd}.svg"))  
+  si_save(glue("Images/29a_treat_qtr_mmd-usaid_{curr_pd}.png"))  
   
   
   #Country Trends
@@ -200,7 +207,7 @@
     facet_wrap(~fct_reorder2(country_lab, period, tx_curr, .desc = TRUE)) +
     scale_y_continuous(label = percent, 
                        breaks = seq(0, 1, .5)) +
-    scale_x_discrete(breaks = c("FY20Q1", "FY20Q3", "FY21Q1", "FY21Q3", "FY22Q1")) +
+    scale_x_discrete(breaks = c("FY20Q1", "FY20Q3", "FY21Q1", "FY21Q3", "FY22Q1", "FY22Q3")) +
     scale_color_identity(aesthetics = c("color","fill")) +
     coord_cartesian(clip = "off") +
     labs(x = NULL, y = NULL,
@@ -217,7 +224,7 @@
           panel.grid.minor.y = element_line(color = "#E8E8E8"),
           strip.text = element_markdown())    
   
-  si_save("Graphics/29b_treat_qtr_mmd-countries.svg")
-  si_save("Images/29b_treat_qtr_mmd-countries.png")        
+  si_save(glue("Graphics/29b_treat_qtr_mmd-countries_{curr_pd}.svg"))
+  si_save(glue("Images/29b_treat_qtr_mmd-countries_{curr_pd}.png"))        
   
   
