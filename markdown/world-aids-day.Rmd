@@ -46,7 +46,7 @@ The clearance timeline is:
 ```{r cars, include=FALSE, echo=FALSE}
 #Current MSD
 msd_path <- si_path() %>% 
-  return_latest("Genie-OUByIMs-Global-Daily-2022-11-22")
+  return_latest("MER_Structured_Datasets_OU_IM_FY20-23_20221216_v2_1")
 
 get_metadata(msd_path)
 
@@ -322,15 +322,17 @@ kp_tx_ou <- df %>%
   nrow() 
 
 
-#KP SHARE OF PREP
-# df %>%
-#     filter(funding_agency == "USAID",
-#            standardizeddisaggregate %in% c("KeyPopAbr", "Total Numerator"),
-#            indicator %in% c("PrEP_NEW"),
-#            fiscal_year == metadata$curr_fy) %>%
-#     count(standardizeddisaggregate, wt = cumulative) %>%
-#     pivot_wider(names_from = standardizeddisaggregate, values_from = "n") %>%
-#     mutate(share = KeyPopAbr / `Total Numerator`)
+#AGYW prep
+prep_agyw_val <- df %>%
+  filter(funding_agency == "USAID",
+         standardizeddisaggregate %in% c("Age/Sex"),
+         indicator %in% c("PrEP_NEW"),
+         fiscal_year == metadata$curr_fy,
+         sex == "Female",
+         age_2019 %in% c("15-19", "20-24")
+         ) %>%
+  count(indicator, wt = cumulative) %>%
+  mutate(n = clean_number(n))
 
 ```
 
@@ -372,7 +374,20 @@ gbv_lp_pct <- grab_lp_results("GEND_GBV", "share")
 
 ```
 
-8. USAID initiated almost **`r kp_prep_val`** members of key populations (KP) and *193,000* adolescent girls and young women (AGYW) on Pre-Exposure Prophylaxis (PrEP) during the last year, expanding effective HIV prevention to key and priority populations. Together KP and AGYW constitute *more than half* of all USAID PrEP initiations, and KP and AGYW PrEP initiations grew quarter over quarter throughout the entire year.
+```{r vmmc, echo=FALSE, include = FALSE}
+vmmc_val <- df %>% 
+  filter(indicator == "VMMC_CIRC",
+         standardizeddisaggregate == "Total Numerator",
+         funding_agency == "USAID",
+         fiscal_year == metadata$curr_fy) %>% 
+    group_by(fiscal_year, funding_agency) %>% 
+    summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
+        ungroup() %>% 
+    mutate(cumulative = clean_number(cumulative)) %>% 
+  pull(cumulative)
+```
+
+8. USAID initiated almost **`r kp_prep_val`** members of key populations (KP) and **`r prep_agyw_val`** adolescent girls and young women (AGYW) on Pre-Exposure Prophylaxis (PrEP) during the last year, expanding effective HIV prevention to key and priority populations. Together KP and AGYW constitute *more than half* of all USAID PrEP initiations, and KP and AGYW PrEP initiations grew quarter over quarter throughout the entire year.
 
 9. This year alone, more than **`r kp_tx_val`** members of key populations in **`r kp_tx_ou`** countries are receiving life-saving HIV medication through USAID support.
 
@@ -380,11 +395,13 @@ gbv_lp_pct <- grab_lp_results("GEND_GBV", "share")
 
 11. In the last year, USAID supported over **`r ovc_serv_val`** orphans and vulnerable children (OVC) and their families affected by HIV.  Services provided to OVC families included, among others, household economic strengthening, education support, parenting skills building, facilitating access to maternal and child healthcare, and HIV specific testing, care, and treatment. 
 
-12. Over the last year, USAID contributed to supporting over *1.8 million* adolescent girls and young women aged 10-24 years through DREAMS programming with combination HIV prevention services. Tailored services include HIV and violence prevention training, education support to complete secondary school, financial literacy and links to employment, PrEP & family planning services.
+12. Over the last year, USAID contributed to supporting over *2.3 million* adolescent girls and young women aged 10-24 years through DREAMS programming with combination HIV prevention services. Tailored services include HIV and violence prevention training, education support to complete secondary school, financial literacy and links to employment, PrEP & family planning services.
  
-13. USAID's DREAMS programming contributed to providing more than *519,000 adolescent girls* and young women aged 15-24 years with economic strengthening interventions, which empower participants with technical skills and networks to become entrepreneurs or be linked to wage employment.
+13. USAID's DREAMS programming contributed to providing more than *295,000 adolescent girls* and young women aged 15-24 years with economic strengthening interventions, which empower participants with technical skills and networks to become entrepreneurs or be linked to wage employment.
  
 14. USAID provides integrated gender-based violence clinical services in *23* countries, including post-violence care services for almost **`r gbv_val`** survivors, with local partners delivering the majority of care (**`r gbv_lp_pct`**)
+
+15. USAID voluntary medical male circumcision programs have circumcised almost **`r vmmc_val`** clients this year
 
 ## Broader PrEP Achievements
 
@@ -413,9 +430,9 @@ lp_prep_val <- grab_lp_results("PrEP_NEW", "value")
 lp_prep_share <- grab_lp_results("PrEP_NEW", "share")
 ```
 
-15. In the last two years, USAID has initiated over **`r prep_new_val`** people across **`r prep_cntry_cnt`** countries onto pre-exposure prophylaxis (PrEP) for HIV prevention.
+16. In the last two years, USAID has initiated over **`r prep_new_val`** people across **`r prep_cntry_cnt`** countries onto pre-exposure prophylaxis (PrEP) for HIV prevention.
 
-16. USAID Local Partners initiated almost **`r lp_prep_val`** individuals onto PrEP in the last year, representing **`r lp_prep_share`** of all USAID PrEP initiations. 
+17. USAID Local Partners initiated almost **`r lp_prep_val`** individuals onto PrEP in the last year, representing **`r lp_prep_share`** of all USAID PrEP initiations. 
 
 
 
