@@ -1,0 +1,125 @@
+---
+title: "HIV Incidence and New Infections in selected countries 2010 to 2020"
+author: "Jessica Hoehner"
+framework: bootstrap
+highlighter: prettify
+hitheme: twitter-bootstrap
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+<style>
+body{
+  font-family: 'Source Sans Pro',
+  font-size: 12px;
+  line-height: 24px;
+}
+
+.container { width: 1000px; }
+h3 {
+  background-color: #002a6c;
+  text-indent: 100px; 
+}
+h4 {
+  text-indent: 100px;
+}
+
+g-table-intro h4 {
+  text-indent: 0px;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+  library(tidyverse)
+  library(extrafont)
+  library(gagglr)
+  library(mindthegap)
+  library(janitor)
+  library(assertr)
+  library(kableExtra)
+```
+
+
+```{r global, include=FALSE,, echo=FALSE}
+
+  ref_id <- "fff13324"
+
+  # percent change function 
+  pct_change <- function(current, starting, sig_dig){
+    
+    janitor::round_half_up(sum(sum(current - starting)/abs(starting))*100, sig_dig)
+    
+  }
+```
+
+
+```{r import_munge, include=FALSE, echo=FALSE}
+
+  df <- pull_unaids(data_type = "HIV Estimates")
+
+ select_ous <- c("Zimbabwe", "Thailand", "Rwanda", "Botswana", "Malawi", 
+                  "Eswatini", "Burundi", "Namibia", "Zambia", "Nigeria", 
+                  "Lesotho")
+  yr_start <- "2010"
+  yr_end <- "2020"
+  req_sex <- "All" 
+  req_age <- c("15+", "15-49")
+  req_ind <- c("Number New HIV Infections", "Percent Incidence")
+  
+  df_filt <- df %>%
+    filter(country %in% select_ous, 
+           year == yr_start | year == yr_end, 
+           sex == req_sex, 
+           age %in% req_age, 
+           indicator %in% req_ind) %>%
+    select(year, country, indicator, estimate) %>%
+    pivot_wider(
+      id_cols = country,
+      names_from = c("indicator", "year"), 
+      values_from = estimate) %>%
+    clean_names()
+  
+  # percent change in new infections and incidence, 2010 to 2020
+  delta_df <- df_filt %>%
+    group_by(country) %>%
+    arrange(country) %>%
+    distinct() %>%
+    rename(
+      new_2010 = number_new_hiv_infections_2010, 
+      new_2020 = number_new_hiv_infections_2020) %>%
+    mutate(
+      pct_delta_hiv_inc = pct_change(percent_incidence_2020, 
+                                     percent_incidence_2010, 0),
+      pct_delta_hiv_inc_label = glue::glue("{pct_delta_hiv_inc}%"),
+      pct_delta_hiv = pct_change(new_2020, new_2010, 0),
+      pct_delta_hiv_label = glue::glue("{pct_delta_hiv}%")) %>%
+  select(country, 
+         new_2010, new_2020, pct_delta_hiv, pct_delta_hiv_label,
+         percent_incidence_2010, percent_incidence_2020, pct_delta_hiv_inc, 
+         pct_delta_hiv_inc_label)
+
+```
+
+```{r table, echo=FALSE}
+
+delta_df %>%
+   select(country, 
+         new_2010, new_2020, pct_delta_hiv_label,
+         percent_incidence_2010, percent_incidence_2020, 
+         pct_delta_hiv_inc_label) %>%
+  mutate(
+    across(starts_with("new"), ~scales::comma(.))) %>%
+  kbl(align = "l", 
+      col.names = c("Country", "new HIV infections (2010)", 
+                    "new HIV infections (2020)", "Percent Change (2010-2020)", 
+                    "HIV incidence per 1000 (2010)", "HIV incidence per 1000 (2020)", "Percent Change (2010-2010)"),
+      caption = "Note: new HIV infections ages 15+, 
+                       HIV incidence per 1000 ages 15-49,
+                 Source: UNAIDS AIDSInfo 2022 | J. Hoehner, SI Analytics") %>%
+  kable_minimal()
+
+```
+
