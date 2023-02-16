@@ -30,7 +30,7 @@
 
   
   pull_sites <- function(ou_name, ou_uid, org_type, org_lvl,
-                         fy_pd = 2021, 
+                         fy_pd = 2022, 
                          username, password, 
                          baseurl = "https://final.datim.org/"){
     
@@ -54,7 +54,7 @@
              # "dimension=TWXpUVE2MqL&", #Support Type
              "displayProperty=SHORTNAME&skipMeta=false&hierarchyMeta=true")
     
-    df <- glamr::datim_process_query(core_url, username, password)
+    df <- grabr::datim_process_query(core_url, username, password)
     
     if(!is.null(df)){
       df <- df %>%
@@ -71,8 +71,8 @@
 # IDENTIFY INPUTS FOR API -------------------------------------------------
   
   #country and level list
-  ctry_list <- get_outable(datim_user(), datim_pwd()) %>% 
-    select(countryname, countryname_uid, 
+  ctry_list <- grabr::get_outable(datim_user(), datim_pwd()) %>% 
+    select(country, country_uid, 
            community = community_lvl, facility = facility_lvl) %>% 
     pivot_longer(c(community, facility),
                  names_to = "type",
@@ -85,13 +85,24 @@
   df_sites <- ctry_list %>% 
     pmap_dfr(~pull_sites(..1, ..2, ..3, ..4, 
                          username = datim_user(), password = datim_pwd()))
-    
-
+  
+  df_tx <- ctry_list %>% 
+    filter(type == "facility") %>% 
+    mutate(type = "TX") %>% 
+    select(country, country_uid, level, type) %>% 
+    pmap_dfr(~ query_datim(..1, ..2, ..3, ..4, datim_user(), datim_pwd()))  
+  
   df_labs <- ctry_list %>% 
     filter(type == "facility") %>% 
     mutate(type = "LAB") %>% 
-    select(countryname_uid, level, type) %>% 
-    pmap_dfr(~ query_datim(..1, ..2, ..3, datim_user(), datim_pwd()))
+    select(country, country_uid, level, type) %>% 
+    pmap_dfr(~ query_datim(..1, ..2, ..3, ..4, datim_user(), datim_pwd()))  
+
+  df_hts <- ctry_list %>% 
+    filter(type == "facility") %>% 
+    mutate(type = "HTS") %>% 
+    select(country, country_uid, level, type) %>% 
+    pmap_dfr(~ query_datim(..1, ..2, ..3, ..4, datim_user(), datim_pwd()))
   
 # SITE COUNT --------------------------------------------------------------
 
@@ -100,6 +111,14 @@
     count()
  
   df_labs %>% 
+    distinct(orgunituid) %>% 
+    count()
+  
+  df_hts %>% 
+    distinct(orgunituid) %>% 
+    count()
+  
+  df_tx %>% 
     distinct(orgunituid) %>% 
     count()
 
