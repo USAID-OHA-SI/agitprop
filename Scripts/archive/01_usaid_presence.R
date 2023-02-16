@@ -35,7 +35,7 @@
   
   #MSD
     df_ou <- si_path() %>% 
-      return_latest("OU_IM_FY19") %>% 
+      return_latest("OU_IM_FY20") %>% 
       read_msd()   
   
   #shapefile
@@ -59,10 +59,10 @@
     
   #identify all places USAID has targets
     df_cntry <- df_ou %>% 
-      filter(fundingagency == "USAID",
+      filter(funding_agency == "USAID",
              fiscal_year == curr_fy,
              !is.na(targets)) %>% 
-      distinct(operatingunit, countrynamename)
+      distinct(operatingunit, country)
   
     # Define a projection to make Greenland a bit smaller & allow for zooom
     spdf <- ms_simplify(spdf, keep = 0.75)
