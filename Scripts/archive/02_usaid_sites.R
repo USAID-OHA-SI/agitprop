@@ -20,6 +20,7 @@
   library(ggtext)
   library(glue)
   library(Wavelength)
+  library(grabr)
   
   source("Scripts/archive/99_utilities.R")
 
@@ -29,6 +30,8 @@
 
   authors <- c("Aaron Chafetz", "Tim Essam")
   
+  get_metadata()
+  
   curr_fy <- source_info(return = "fiscal_year")
   datim_cy <- curr_fy - 1 
 
@@ -37,23 +40,23 @@
   
   #uids and levels for each country
   ctry_list <- get_outable(datim_user(), datim_pwd()) %>% 
-    select(countryname, countryname_uid, facility_lvl)
+    select(country, country_uid, facility_lvl)
   
   #expand each country by the API type for pmap
-  full_list <- expand_grid(countryname = ctry_list$countryname,
+  full_list <- expand_grid(country = ctry_list$country,
               type = c("TX", "HTS", "LAB")) %>% 
     left_join(ctry_list)
   
   #run API across all countries
   df_full <- full_list %>% 
-    select(countryname, countryname_uid, facility_lvl, type) %>% 
+    select(country, country_uid, facility_lvl, type) %>% 
     pmap_dfr(~ query_datim(..1, ..2, ..3, ..4, datim_user(), datim_pwd()))
 
   
 # PULL COORDINATES --------------------------------------------------------
   
   #pull hierarchy
-  df_orgs <- map_dfr(.x = unique(ctry_list$countryname_uid),
+  df_orgs <- map_dfr(.x = unique(ctry_list$country_uid),
                      .f = ~ pull_hierarchy(.x, datim_user(), datim_pwd())) 
   
   
@@ -66,7 +69,7 @@
   
   #remove disaggs from lab
   df_full_clean <- df_full_clean %>% 
-    filter(`Disaggregation Type` %in% c(NA, "POCT/TestVolume", "Lab/TestVolume")) %>% 
+    filter(`Disaggregation Type` %in% c("Lab/CQI", "POCT/TestVolume", "Lab/TestVolume", NA)) %>% 
     select(-`Disaggregation Type`)
   
   #aggregate
