@@ -164,8 +164,8 @@
              x = 16.9, y = 60e3, xend = 17, yend = 75e3,
              color = matterhorn)
   
-  si_save("Graphics/09_prev_qtr_prep-usaid-scaleup.svg")
-  si_save("Images/09_prev_qtr_prep-usaid-scaleup.png") 
+  si_save(glue("Graphics/09_prev_qtr_prep-usaid-scaleup_{curr_pd}.svg"))
+#  si_save("Images/09_prev_qtr_prep-usaid-scaleup.png") 
   
  
 
