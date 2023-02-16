@@ -49,13 +49,13 @@
 # IMPORT ------------------------------------------------------------------
   # Grab data from google drive
   
-  epi_glbl <- pull_unaids("HIV Estimates", FALSE) %>% 
+  epi_glbl <- pull_unaids(TRUE, "HIV Estimates", FALSE) %>% 
     filter(country == "Global", str_detect(indicator, "(AIDS Related|New HIV Infections)"))
   
-  #pull Total PLHIV death data
+  #pull Total PLHIV death data ()
   g_id <- "1CSVOauu2gyq9Am0eCl7TgpAeB1Xd3dCtE_Oc_yk3cI4"
   
-  df_deaths <- range_speedread(ss = g_id, sheet = "UNAIDS_epi_control") %>% 
+  df_deaths <-  pull_unaids(FALSE, "epicontrol", FALSE) %>% 
     filter(indicator == "Number Total Deaths HIV Pop")
 
   # Check that filters have not changed

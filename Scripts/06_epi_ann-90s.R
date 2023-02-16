@@ -1,9 +1,9 @@
-## PROJECT: agitprop
+## PROJECT: groundhog_day
 ## AUTHOR:  K. Srikanth | USAID
-## PURPOSE: 90's Achievement
+## PURPOSE: 95's Achievement
 ## LICENSE: MIT
-## DATE:    2021-12-06
-##
+## DATE:    2022-06-08
+## NOTE: agitprop/Scripts/06_epi_ann-90s.R
 
 
 # DEPENDENCIES ------------------------------------------------------------
@@ -26,62 +26,65 @@ load_secrets()
 authors <- c("Aaron Chafetz", "Tim Essam", "Karishma Srikanth")
 
 #goal
-goal <- 90
+goal <- 95
 
 #indicators
-ind_sel <- c("KNOWN_STATUS","KNOWN_STATUS_ON_ART", "ON_ART_VLS")
+ind_sel <- c("Percent Known Status of PLHIV","Percent on ART with Known Status", "Percent VLS on ART")
 
 
 # IMPORT ------------------------------------------------------------------
 
 #Cascade %
-df_unaids <- pull_unaids("Test & Treat - Percent", pepfar_only = TRUE)
+df_unaids <- pull_unaids(TRUE, "HIV Test & Treat", pepfar_only = TRUE)
 
 #PLHIV number
-df_est <- pull_unaids("HIV Estimates - Integer", pepfar_only = TRUE)
+df_est <- pull_unaids(TRUE, "HIV Estimates", pepfar_only = TRUE)
 
 #PEPFAR select list
-  pepfar_cntry <- get_outable(datim_user(), datim_pwd()) %>% 
-    filter(str_detect(operatingunit, "Region", negate = TRUE)) %>% 
-    pull(countryname)
-  
+pepfar_cntry <- pepfar_country_list %>% 
+  filter(str_detect(operatingunit, "Region", negate = TRUE)) %>% 
+  pull(country)
+
 
 # MUNGE -------------------------------------------------------------------
 
 #num PLHIV
 df_est <- df_est %>% 
   filter(country %in% pepfar_cntry,
-         indicator == "PLHIV",
-         stat == "est",
-         age == "all",
-         sex == "all") %>% 
+         indicator == "Number PLHIV",
+         #  stat == "est",
+         age == "All",
+         sex == "All") %>% 
   group_by(country) %>% 
-  summarise(value = sum(value, na.rm = TRUE)) %>% 
+  summarise(estimate = sum(estimate, na.rm = TRUE)) %>% 
   ungroup() %>% 
-  rename(PLHIV = value)
+  rename(PLHIV = estimate)
 
 #Cascade
 df_unaids <- df_unaids %>% 
   filter(year == max(year),
-         sex == "all",
-         stat == "est",
-         age == "all",
+         sex == "All",
+         # stat == "est",
+         age == "All",
          country %in% pepfar_cntry,
          indicator %in% ind_sel)
 
 df_viz <- df_unaids %>% 
+  select(-c(lower_bound:upper_bound)) %>% 
   left_join(df_est, by = c("country")) %>% 
-  filter(country != "Vietnam") %>% 
+  filter(country != "Vietnam") %>%
   mutate(country = case_when(country == "Democratic Republic of the Congo" ~ "DRC",
                              country == "Dominican Republic" ~ "DR", 
                              TRUE ~ country),
-         indicator = case_when(indicator == "KNOWN_STATUS_ON_ART" ~ "On Treatment",
-                               indicator == "KNOWN_STATUS" ~ "Known Status",
-                               indicator == "ON_ART_VLS" ~ "Virally Suppressed",
+         indicator = case_when(indicator == "Percent on ART with Known Status" ~ "On Treatment",
+                               indicator == "Percent Known Status of PLHIV" ~ "Known Status",
+                               indicator == "Percent VLS on ART" ~ "Virally Suppressed",
                                TRUE ~ indicator),
          PLHIV = ifelse(is.na(PLHIV), 0, PLHIV))
 
-df_viz <- df_viz %>% 
+#BURUNDI AND MALAWI - issues because 1st 95 and 3 95 are the same
+df_viz <- df_viz %>%
+  rename(value = estimate) %>% 
   group_by(country) %>% 
   mutate(value = round(value, 2),
          grouping = case_when(value == min(value, na.rm = TRUE) ~ indicator),
@@ -93,12 +96,15 @@ df_viz <- df_viz %>%
                          value == min(value, na.rm = TRUE) & grouping == "Achieved" ~ 1-value,
                          TRUE ~ 0),
          achv = case_when(value == min(value, na.rm = TRUE) & value < goal ~ value),
-         dot_color = case_when(grouping == "Known Status" ~ denim,
-                               grouping == "On Treatment" ~ denim,
-                               grouping == "Virally Suppressed" ~ denim,
-                               grouping == "Achieved" ~ old_rose,
+         # gap = ifelse(iso %in% c("BDI", "MWI") & grouping == "Virally Suppressed", 0, gap),
+         # achv = ifelse(iso %in% c("BDI", "MWI") & grouping == "Virally Suppressed", NA, achv),
+         # grouping = ifelse(iso %in% c("BDI", "MWI"), "Known Status", grouping),
+         dot_color = case_when(grouping == "Known Status" ~ "#009ee3",
+                               grouping == "On Treatment" ~ "#009ee3",
+                               grouping == "Virally Suppressed" ~ "#009ee3",
+                               grouping == "Achieved" ~ "#dd052a",
                                # grouping == "Z_Achieved" ~ genoa,
-                               TRUE ~ denim_light)) %>% 
+                               TRUE ~ "#a8e5ff")) %>% 
   fill(grouping, .direction = "downup") %>% 
   ungroup() %>% 
   mutate(gap_bar = case_when(value < goal ~ value),
@@ -110,7 +116,7 @@ epi_ctrl_cnt <- df_viz %>%
   filter(grouping == "Achieved") %>% 
   distinct(country) %>% 
   nrow()
-  
+
 df_viz %>% 
   ggplot(aes(value, country, color = dot_color)) +
   geom_vline(xintercept = goal, linetype = "dashed") + 
@@ -122,7 +128,7 @@ df_viz %>%
   scale_color_identity() +
   facet_grid(grouping~indicator, scales = "free_y", space = "free_y") +
   labs(x = NULL, y = NULL, color = NULL,
-       title = glue("AS OF 2020, {epi_ctrl_cnt} PEPFAR COUNTRIES HAVE ACHIEVED EPIDEMIC CONTROL"),
+       title = glue("AS OF 2020, {epi_ctrl_cnt} PEPFAR COUNTRY HAS ACHIEVED THE UNAIDS' 2030 FAST TRACK TARGETS"),
        caption = glue("Source: UNAIDS 90-90-90 15+ (2020)
                       SI analytics: {paste(authors, collapse = '/')}
                      US Agency for International Development")) +
