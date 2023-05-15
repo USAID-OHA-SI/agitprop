@@ -12,7 +12,7 @@
   library(tidyverse)
   library(glitr)
   library(glamr)
-  library(ICPIutilities)
+  library(gophr)
   library(extrafont)
   library(scales)
   library(tidytext)
@@ -25,18 +25,23 @@
   library(rmapshaper)
   library(gt)
 
-  source("Scripts/99_utilities.R")
+  source("Scripts/archive/99_utilities.R")
 
 # GLOBAL VARIABLES --------------------------------------------------------
   
   authors <- c("Aaron Chafetz", "Tim Essam")
+  
+ filepath <-  si_path() %>% 
+    return_latest("OU_IM_FY21")
+ 
+ get_metadata(filepath)
 
 # IMPORT ------------------------------------------------------------------
   
   #MSD
     df_ou <- si_path() %>% 
-      return_latest("OU_IM_FY20") %>% 
-      read_msd()   
+      return_latest("OU_IM_FY21") %>% 
+      read_psd()   
   
   #shapefile
     spdf <- ne_countries(type = "sovereignty", 
@@ -60,7 +65,7 @@
   #identify all places USAID has targets
     df_cntry <- df_ou %>% 
       filter(funding_agency == "USAID",
-             fiscal_year == curr_fy,
+             fiscal_year == metadata$curr_fy,
              !is.na(targets)) %>% 
       distinct(operatingunit, country)
   
@@ -72,7 +77,7 @@
   # Join MSD with shapefiles
     spdf_ou <- spdf_rob %>% 
       right_join(df_cntry, 
-                by = c("admin" ="countrynamename"))
+                by = c("admin" ="country"))
   
   
 ## VIZ ---------------------------------------------------------
@@ -87,7 +92,7 @@
             color = "white",
             size = .2) +
     labs(title = glue("USAID SUPPORTS PEPFAR PROGRAMMING ACROSS {cont_count} CONTINENTS IN {nrow(spdf_ou)} COUNTRIES"),
-         caption = glue("Source: {msd_source}
+         caption = glue("Source: {metadata$source}
                      SI analytics: {paste(authors, collapse = '/')}
                      US Agency for International Development")) +
     si_style_map() +
@@ -110,18 +115,18 @@ tbl <-  spdf_ou %>% st_drop_geometry() %>% count(continent, name) %>%
    mutate(`Countries Supported` = str_wrap(`Countries Supported`, width = 100))
 
       
-  gt_grob <- gridExtra::tableGrob((tbl), rows = NULL, theme = ttheme_minimal(base_family = "Source Sans Pro",
+  gt_grob <- gridExtra::tableGrob((tbl), rows = NULL, theme = gridExtra::ttheme_minimal(base_family = "Source Sans Pro",
                                                                              core = list(fg_params = list(hjust=0, x=0.1, 
                                                                                                           fontsize = 12)
                                                                                          )
                                                                              )
                                   )
 
-  map / cntry_tbl
+  map / gt_grob
   
-  ggsave("Images/01_usaid_presence_text.svg", plot = cntry_tbl, scale = 1.2, width = 10, height = 7)
+  ggsave("Graphics/01_usaid_presence_text.svg", plot = gt_grob, scale = 1.2, width = 10, height = 7)
     
-  ggsave("Images/01_usaid_presence.svg", plot = map, scale = 1.2, width = 10, height = 7)
+  ggsave("Graphics/01_usaid_presence.svg", plot = map, scale = 1.2, width = 10, height = 7)
   
   
   si_save("Images/01_usaid_presence.png",
