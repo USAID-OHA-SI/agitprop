@@ -42,20 +42,20 @@
 
   #Current MSD
   df <- si_path() %>% 
-    return_latest("OU_IM_FY19") %>% 
-    read_msd()   
+    return_latest("OU_IM_FY21") %>% 
+    read_psd()   
   
   #Archived MSD
   df_arch <- si_path() %>% 
     return_latest("OU_IM_FY15") %>% 
-    read_msd()
+    read_psd()
   
 
 # MUNGE -------------------------------------------------------------------
 
-  hiv_free_19_21 <- 
+  hiv_free_21_23 <- 
     df %>% 
-    filter(fundingagency == "USAID",
+    filter(funding_agency == "USAID",
            indicator %in% c("PMTCT_EID", "PMTCT_HEI_POS"),
            standardizeddisaggregate %in% c("Total Numerator")) %>% 
     clean_indicator() %>% 
@@ -64,9 +64,9 @@
     spread(indicator, cumulative) %>% 
     mutate(hiv_free = PMTCT_EID - PMTCT_HEI_POS)
 
-  hiv_free_15_18 <- 
+  hiv_free_15_20 <- 
     df_arch %>% 
-    filter(fundingagency == "USAID",
+    filter(funding_agency == "USAID",
            indicator %in% c("PMTCT_EID", "PMTCT_HEI_POS", "PMTCT_EID_POS"),
            standardizeddisaggregate %in% c("Total Numerator")) %>% 
     clean_indicator() %>% 
@@ -78,10 +78,10 @@
     ungroup()
   
   hiv_free_all <- 
-    bind_rows(hiv_free_15_18, hiv_free_19_21) %>% 
+    bind_rows(hiv_free_15_20, hiv_free_21_23) %>% 
     mutate(tot_hiv_free = sum(hiv_free, na.rm = T),
            tot_pmtct_eid = sum(PMTCT_EID), na.rm = T) %>% 
-    mutate(fill_col = if_else(fiscal_year == curr_fy, 
+    mutate(fill_col = if_else(fiscal_year == metadata$curr_fy, 
                               "#419fbe", "#005e7a")) 
   
   total_count <- 
