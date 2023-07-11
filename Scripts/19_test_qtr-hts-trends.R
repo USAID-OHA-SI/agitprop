@@ -2,6 +2,7 @@
 # AUTHOR:   K. Srikanth | USAID
 # PURPOSE:  HTS scale up since PEPFAR start
 # LICENSE:  MIT
+# REF ID:   08e5947b 
 # DATE:     2021-11-30
 # UPDATED: 
 
@@ -25,6 +26,9 @@ library(lubridate)
 
 authors <- c("Karishma Srikanth", "Aaron Chafetz", "Tim Essam")
 
+
+ref_id <- "08e5947b"
+
 #clean number function
 clean_number <- function(x, digits = 0){
   dplyr::case_when(x >= 1e9 ~ glue("{round(x/1e9, digits)}B"),
@@ -32,6 +36,8 @@ clean_number <- function(x, digits = 0){
                    x >= 1e3 ~ glue("{round(x/1e3, digits)}K"),
                    TRUE ~ glue("{x}"))
 }
+
+get_metadata()
 
 
 # IMPORT ------------------------------------------------------------------
@@ -46,7 +52,7 @@ df_hist <- read_csv("Data/Country and Regional Targets_Results 2004-2016.csv",
 
 #Current MSD
 df <- si_path() %>% 
-  return_latest("OU_IM_FY20") %>% 
+  return_latest("OU_IM_FY21") %>% 
   read_msd()
 
 #Archived MSD
@@ -106,9 +112,11 @@ df_hts <- bind_rows(df_hist_clean, df_hts) %>%
 #prep viz dataset
 df_hts_viz <- df_hts %>% 
   select(-c(type)) %>% 
-  filter(fiscal_year <= 2021) %>% 
+ # filter(fiscal_year <= 2021) %>% 
   arrange(funding_agency, fiscal_year) %>% 
   mutate(agency_alpha = ifelse(funding_agency == "USAID", 1, 0.6),
+         agency_alpha = ifelse(fiscal_year == 2023 & funding_agency == "PEPFAR", 0.3, agency_alpha),
+         agency_alpha = ifelse(fiscal_year == 2023 & funding_agency == "USAID", 0.5, agency_alpha),
          label_hts = glue("patients receiving\n HIV Testing Services"))
 
 #get numbers for title
@@ -131,14 +139,14 @@ title_info_pepfar <- df_hts_viz %>%
 #VIZ ---------------------------------------------------------------------------
 
 df_hts_viz %>% 
-  mutate(value_label = ifelse(funding_agency == "USAID", clean_number(hts_tst, 1), NA)) %>% 
+  mutate(value_label = ifelse(funding_agency == "USAID", clean_number(hts_tst), NA)) %>% 
   ggplot(aes(fiscal_year, hts_tst)) +
   geom_col(aes(alpha = agency_alpha), fill = burnt_sienna, position = "identity", na.rm = TRUE) +
   geom_hline(yintercept = 0, color = "gray40") +
   #geom_hline(yintercept = seq(2.5e7, 1e8, 2.5e7), color = "white") +
   #facet_grid(label_hts~., switch = "y") +
- # geom_text(aes(label = value_label), na.rm = TRUE, vjust = -0.5, 
-          #  family = "Source Sans Pro") +
+ geom_text(aes(label = value_label), na.rm = TRUE, vjust = -0.5, color = grey90k,
+  family = "Source Sans Pro") +
   scale_y_continuous(labels = label_number_si(),
                      position = "right") +
   scale_x_continuous(expand = c(.005, .005),
@@ -148,9 +156,7 @@ df_hts_viz %>%
        title = glue("As of {curr_pd}, USAID provided HIV testing services to \\
                        {title_info_usaid$share} \\
                        of PEPFAR's {title_info_pepfar$hts_tst} patients receiving HIV testing services") %>%  toupper(),
-       caption = glue("Source: {msd_source} (including FY15-18) + Spotlight FY04-14
-                        SI analytics: {paste(authors, collapse = '/')}
-                     US Agency for International Development")) +
+       caption = glue("Source: {metadata$source} (including FY15-18) + Spotlight FY04-14 | ref_id: {ref_id}")) +
   si_style_ygrid()
 
 si_save("Graphics/19_test_qtr.svg")
