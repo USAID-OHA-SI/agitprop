@@ -1,0 +1,186 @@
+---
+title: "HFAC Briefing"
+author: "Karishma Srikanth & Nada Petrovic"
+date: "06/05/2023"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+  library(tidyverse)
+  library(glitr)
+  library(glamr)
+  library(gophr)
+  library(extrafont)
+  library(scales)
+  library(tidytext)
+  library(patchwork)
+  library(ggtext)
+  library(glue)
+  library(janitor)
+  library(lubridate)
+  library(googlesheets4)
+```
+
+# Data Call for World AIDS Day
+
+Audience: The public, Agency stakeholders, HIV/AIDS stakeholders, development 
+
+Purpose: The purpose of this document is to create one place for the data points we will be sharing on World AIDS Day. On World AIDS Day we will be sharing an Agency notice, an Agency-wide social media toolkit and we will be updating our OHA webpage on World AIDS Day [last year’s version here](https://www.usaid.gov/world-aids-day). These points will be repeated throughout these deliverables and language may vary slightly from what is included below. The USG World AIDS Day theme is “Putting Ourselves to the Test: Achieving Equity to End HIV.”  The UNAIDS theme is “Equalize. UNAIDS is urging each of us to address the inequalities which are holding back progress in ending AIDS.”
+
+Given the World AIDS Day Theme of equity, we are planning to focus on achievements related to making prevention methods more accessible (like PrEP) and priority populations in addition to our overall achievements. We are not interested in exact numbers for this exercise; over X, nearly X, etc. are fine. 
+
+Our plan is to share the Agency social media toolkit by Nov 23. 
+
+The clearance timeline is:
+
+* Division chiefs to clear by COB Tuesday Nov 15th
+* Front Office to clear by COB Friday November 18th
+* Nov 21st - SIEI & comms to address any outstanding issues/comments from clearance process
+* Nov 22nd - SIEI to plug in numbers for Q4
+* Nov 23rd - Social Media tool kit is released
+
+
+```{r cars, include=FALSE, echo=FALSE}
+#Current MSD
+msd_path <- si_path() %>% 
+  return_latest("MER_Structured_Datasets_OU_IM_FY21-23_20230512_v1_1")
+
+get_metadata(msd_path)
+
+df <- read_psd(msd_path)
+
+# load source functions
+#source("Scripts/archive/99_utilities.R")
+
+#LOCAL PARTNER
+#Read in the google sheet hyperfile with local partner
+sheet_id <- "1MQviknJkJDttGdNEJeNaYPKmHCw6BqPuJ0C5cslV5IE"
+
+df_partner <- read_sheet(sheet_id, sheet = "MechID-PartnerType", range = "A:B") %>% 
+  clean_names() %>% 
+  rename(mech_code = mechanism_id) %>% 
+  mutate(mech_code = as.character(mech_code),
+         partner_type = case_when(partner_type == "Regional" ~ "Local",
+                                  partner_type == "TBD Local" ~ "Local", TRUE ~ partner_type))
+
+
+#clean number function
+clean_number <- function(x, digits = 0){
+  dplyr::case_when(x >= 1e9 ~ glue("{round(x/1e9, digits)} billion"),
+                   x >= 1e6 ~ glue("{round(x/1e6, digits)} million"),
+                   x >= 1e3 ~ glue("{round(x/1e3, digits)} thousand"),
+                   TRUE ~ glue("{x}"))
+}
+
+load_secrets()
+
+```
+
+## Topline Achievements
+
+```{r tx_curr, echo=FALSE, include = FALSE}
+
+ # Derived from agitprop/Scripts/26_treat_qtr_historic-txcurr-trends.R
+  
+  #create a PEPFAR duplicate and aggregate up to country/global level
+  df_tx <- df %>%
+    bind_rows(df %>% mutate(funding_agency = "PEPFAR")) %>% 
+    filter(indicator %in% c("TX_CURR", "TX_NEW"),
+           standardizeddisaggregate == "Total Numerator") %>% 
+    group_by(fiscal_year, funding_agency, indicator) %>% 
+    summarise(value = sum(cumulative, na.rm = TRUE)) %>% 
+    ungroup() %>% 
+    filter(funding_agency %in% c("PEPFAR", "USAID"),
+           value != 0) %>% 
+    arrange(indicator, funding_agency, fiscal_year) %>% 
+    mutate(source = "MSD")
+
+ df_tx <- df_tx %>% 
+    filter(fiscal_year == metadata$curr_fy,
+           indicator == "TX_CURR") %>%
+    select(fiscal_year, indicator, funding_agency, value) %>% 
+    pivot_wider(names_from = funding_agency) %>% 
+    mutate(usaid_share = USAID/PEPFAR)  
+  
+  tx_val <<- df_tx %>% 
+    mutate(USAID_Lab = USAID %>% clean_number()) %>%
+    pull(USAID_Lab) 
+
+
+```
+```{r VLS, echo=FALSE, include = FALSE}
+
+# derived from agitprop/Scripts/42_trend_ou_viral_load_coverage.R
+
+df_vls_global <- df %>% 
+    clean_indicator() %>% 
+    clean_agency() %>% 
+    clean_countries(colname = "country") %>% 
+   filter(
+      fiscal_year != metadata$curr_fy + 1,
+      funding_agency == "USAID",
+      indicator %in% c("TX_CURR", "TX_PVLS_D", "TX_PVLS"),
+      standardizeddisaggregate %in% c("Total Numerator", "Total Denominator")
+    ) %>% 
+    group_by(fiscal_year, funding_agency, country, indicator) %>% 
+    summarise(across(starts_with("qtr"), sum, na.rm = T), .groups = "drop") %>% 
+    reshape_msd() %>% 
+    select(-period_type) %>% 
+    pivot_wider(names_from = indicator, values_from = value) %>% 
+    group_by(funding_agency, country) %>% 
+    mutate(TX_CURR_LAG2 = lag(TX_CURR, 2, order_by = period)) %>% 
+    relocate(TX_CURR_LAG2, .before = TX_CURR) %>% 
+    filter(!is.na(TX_PVLS_D), TX_PVLS_D > 0) %>% 
+    group_by(period, funding_agency) %>% 
+    summarise(across(starts_with("TX"), sum, na.rm = T), .groups = "drop") %>% 
+    mutate(VLC = TX_PVLS_D / TX_CURR_LAG2,
+           VLS = TX_PVLS/TX_PVLS_D)
+
+  df_tx_ou <- df %>% 
+    clean_indicator() %>% 
+    clean_agency() %>% 
+    clean_countries(colname = "country") %>% 
+    filter(
+      fiscal_year != metadata$curr_fy + 1,
+      funding_agency == "USAID",
+      indicator %in% c("TX_CURR", "TX_PVLS_D", "TX_PVLS"),
+      standardizeddisaggregate %in% c("Total Numerator", "Total Denominator")
+    ) %>% 
+    group_by(fiscal_year, funding_agency, country, indicator) %>% 
+    summarise(across(starts_with("qtr"), sum, na.rm = T), .groups = "drop") %>% 
+    reshape_msd() %>% 
+    dplyr::select(-period_type) %>% 
+    pivot_wider(names_from = indicator, values_from = value) %>% 
+    group_by(funding_agency, country) %>% 
+    mutate(TX_CURR_LAG2 = lag(TX_CURR, 2, order_by = period),
+           VLC = TX_PVLS_D / TX_CURR_LAG2,
+           VLS = TX_PVLS/TX_PVLS_D) %>% 
+    ungroup() %>% 
+    relocate(TX_CURR_LAG2, .before = TX_CURR) %>% 
+    filter(!is.na(TX_PVLS_D), TX_PVLS_D > 0)
+
+glbl_vls <<- df_vls_global %>%
+  filter(period == metadata$curr_pd) %>%
+  mutate(VLS_pct = percent(VLS)) %>%
+  pull(VLS_pct)
+
+meet_90_vls <<- df_tx_ou %>%
+  filter(period == metadata$curr_pd, VLS >= .9) %>%
+  distinct(country) %>% nrow()
+
+meet_95_vls <<- df_tx_ou %>%
+  filter(period == metadata$curr_pd, VLS >= .95) %>%
+  distinct(country) %>% nrow()
+
+```
+
+
+Results through **`r metadata$curr_pd`**
+
+1. Through PEPFAR, the U.S. government has saved more than 21 million lives, prevented millions of HIV infections, and helped 20 countries with HIV burden achieve epidemic control of HIV or reach UNAIDS treatment targets. Country leadership on sustaining the HIV response will require bold political, programmatic, and financial leadership.
+
+2. Currently, USAID provides over **`r tx_val`** clients with life-saving HIV-treatment. **`r glbl_vls`** of these beneficiaries who received a viral load test are virally suppressed, meaning that they can live longer, healthier lives and the virus can no longer be transmitted.
