@@ -25,24 +25,7 @@ knitr::opts_chunk$set(echo = TRUE)
   library(googlesheets4)
 ```
 
-# Data Call for World AIDS Day
-
-Audience: The public, Agency stakeholders, HIV/AIDS stakeholders, development 
-
-Purpose: The purpose of this document is to create one place for the data points we will be sharing on World AIDS Day. On World AIDS Day we will be sharing an Agency notice, an Agency-wide social media toolkit and we will be updating our OHA webpage on World AIDS Day [last year’s version here](https://www.usaid.gov/world-aids-day). These points will be repeated throughout these deliverables and language may vary slightly from what is included below. The USG World AIDS Day theme is “Putting Ourselves to the Test: Achieving Equity to End HIV.”  The UNAIDS theme is “Equalize. UNAIDS is urging each of us to address the inequalities which are holding back progress in ending AIDS.”
-
-Given the World AIDS Day Theme of equity, we are planning to focus on achievements related to making prevention methods more accessible (like PrEP) and priority populations in addition to our overall achievements. We are not interested in exact numbers for this exercise; over X, nearly X, etc. are fine. 
-
-Our plan is to share the Agency social media toolkit by Nov 23. 
-
-The clearance timeline is:
-
-* Division chiefs to clear by COB Tuesday Nov 15th
-* Front Office to clear by COB Friday November 18th
-* Nov 21st - SIEI & comms to address any outstanding issues/comments from clearance process
-* Nov 22nd - SIEI to plug in numbers for Q4
-* Nov 23rd - Social Media tool kit is released
-
+# Modified Annual TPs to address HFAC request
 
 ```{r cars, include=FALSE, echo=FALSE}
 #Current MSD
