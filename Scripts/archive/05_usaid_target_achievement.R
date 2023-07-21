@@ -1,6 +1,7 @@
 # PROJECT:  agitprop
 # AUTHOR:   A.Chafetz | USAID
 # PURPOSE:  USAID achievement
+# REF ID:   e4394ee2 
 # LICENSE:  MIT
 # DATE:     2021-05-19
 # UPDATED:  2021-10-05
@@ -21,10 +22,13 @@
   
   source("Scripts/99_utilities.R")
 
+ref_id <- "e4394ee2"
+
+
 
 # GLOBAL VARIABLES --------------------------------------------------------
   
-  ind_sel <- c("PrEP_NEW", "VMMC_CIRC", "HTS_TST", "HTS_TST_POS", "TX_NEW", "TX_CURR")
+  ind_sel <- c("PrEP_NEW", "VMMC_CIRC", "HTS_TST", "HTS_TST_POS", "TX_NEW", "TX_CURR", "OVC_SERV")
 
   authors <- c("Aaron Chafetz", "Tim Essam")
   
@@ -35,8 +39,10 @@
 # IMPORT ------------------------------------------------------------------
   
   df <- si_path() %>% 
-    return_latest("OU_IM_FY19") %>% 
-    read_msd()   
+    return_latest("OU_IM_FY21") %>% 
+    read_psd()   
+  
+  get_metadata()
 
 
 # MUNGE -------------------------------------------------------------------
@@ -49,10 +55,10 @@
   
   
   df_achv <- df %>% 
-    filter(fundingagency == "USAID", 
+    filter(funding_agency == "USAID", 
            indicator %in% ind_sel,
            standardizeddisaggregate == "Total Numerator",
-           fiscal_year == curr_fy) %>% 
+           fiscal_year == metadata$curr_fy) %>% 
     resolve_knownissues(store_excl = TRUE)
   
   df_achv <- df_achv %>% 
@@ -89,7 +95,7 @@
   
   df_viz %>% 
     ggplot(aes(fill = achv_color, values = value, alpha = achv_alpha)) +
-    geom_waffle(color = "white", size = 1, n_rows = 10, flip = TRUE) +
+    geom_waffle(color = "white", size = 1, n_rows = 10, flip = TRUE, na.rm = TRUE) +
     geom_text(aes(x = 5, y  = 12, label = percent(achievement, 1), color = achv_color),
               family = "Source Sans Pro SemiBold", size = 14/.pt) +
     facet_wrap(~full_lab, nrow = 1, strip.position = "bottom") +
@@ -104,9 +110,7 @@
     labs(x= NULL, y = NULL,
          title = "SELECT USAID INDICATOR PERFORMANCE ACROSS ALL COUNTRIES",
          subtitle = glue("as of {curr_pd}, goal of being at around {percent(trgt_rng)} of the FY target"),
-         caption = glue("Excludes MER Known Issues | Source: {msd_source}
-                        SI analytics: {paste(authors, collapse = '/')}
-                     US Agency for International Development")) +
+         caption = glue(metadata$caption)) +
     si_style_nolines() +
     theme(axis.text.y = element_blank(),
           strip.text.x = element_text(hjust = .5),
@@ -116,6 +120,68 @@
   si_save("Images/05b_achievement.png", height = 4)
   
   si_save("Graphics/05b_achievement.svg", height = 4)
+  
+  
+  df_target_viz %>% 
+    ggplot(aes(y = fct_reorder(agency, value))) + 
+    #geom_col(aes(x = total), fill = trolley_grey_light) + 
+    geom_col(aes(total, alpha = 0.8), fill = trolley_grey_light) +
+    geom_errorbar(aes(y = agency, xmin = total, xmax =total),
+                  color = trolley_grey) +
+    geom_col(aes(value, fill = fill_color, alpha = 0.8)) +
+    geom_text(aes(x = value + 18000000, 
+                  label = label_number(0.1, scale_cut = cut_short_scale())(value)),
+              family = "Source Sans Pro", color = nero, vjust = -0.5) +
+    geom_text(aes(x = value + 18000000,
+                  label = percent(share, 0.1),
+                  family = "Source Sans Pro", color = trolley_grey, vjust = 1),
+              size = 3.5) +
+    scale_fill_identity() +
+    scale_color_identity()+
+    scale_alpha_identity() +
+    si_style_xgrid() +
+    scale_x_continuous(label = scales::label_number(scale_cut = cut_short_scale())) +
+    labs(x = NULL,
+         y = NULL,
+         title = "USAID accounts for almost 42% of total COP/ROP23 Targets" %>% toupper(),
+         caption = glue("Source: COP23 COP Matrix Report | Ref id: {ref_id}"))
+  
+  si_save("Graphics/COP23_GHPortfolio_TargetShare.svg")
+  si_save("Images/COP23_GHPortfolio_TargetShare.png")
+  
+  df_viz %>% 
+    mutate(total = 100) %>% 
+    filter(!is.na(achievement)) %>% 
+   # pivot_wider(names_from = "funding_agency", values_from = "n") %>% 
+    # mutate(usaid_share = USAID/PEPFAR) %>% 
+    ggplot(aes(y = fct_reorder(indicator, cumulative))) + 
+    geom_col(aes(total), fill = trolley_grey_light) +
+    geom_errorbar(aes(y = indicator, xmin = total, xmax =total),
+                  color = trolley_grey) +
+    geom_col(aes(value, alpha = 0.8, fill = achv_color)) +
+    scale_x_continuous(label = scales::label_number(scale_cut = cut_short_scale()))+
+    geom_text(aes(x = value,
+                  label = val_lab,
+              family = "Source Sans Pro", color = nero)) +
+    geom_text(aes(x = total,
+                  label = glue("{value}%"),
+                  family = "Source Sans Pro", color = trolley_grey)) +
+    # geom_text(aes(x = PEPFAR,
+    #               label = label_number(0.1, scale_cut = cut_short_scale())(PEPFAR)),
+    #           family = "Source Sans Pro", color = nero, vjust = -0.5) +
+    # geom_text(aes(x = USAID + 3000000,
+    #               label = percent(usaid_share, 0.1),
+    #               family = "Source Sans Pro", color = trolley_grey, vjust = 1),
+    #           size = 3.5) +
+    scale_fill_identity() +
+    scale_color_identity()+
+    scale_alpha_identity() +
+    si_style_xgrid() +
+    labs(x = NULL, y = NULL,
+         title = "USAID % achievement towards FY23 targets, as of Q2" %>% toupper(),
+         caption = metadata$caption)
+  
+  si_save("Graphics/target_achv.svg")
   
   
   # #old method of boxes
