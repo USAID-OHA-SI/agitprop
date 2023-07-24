@@ -45,6 +45,7 @@ df_mmd <- df %>%
          indicator == "TX_CURR",
          #operatingunit != "South Africa",
          fiscal_year >= 2020,
+         #fiscal_year > 2021,
          standardizeddisaggregate %in% c("Total Numerator", "Age/Sex/ARVDispense/HIVStatus")) %>% 
   mutate(otherdisaggregate = case_when(is.na(otherdisaggregate) ~ "total",
                                        TRUE ~ str_remove(otherdisaggregate, "ARV Dispensing Quantity - ")
@@ -75,6 +76,7 @@ df_mmd_agency<- df_mmd %>%
   ungroup %>%
   #Calculation starting at COVID ramp-up FY20Q3
   filter(!(period %in% c("FY20Q1","FY20Q2")))
+  #filter((period %in% c("FY22Q1","FY22Q2","FY22Q3","FY22Q4")))
 
 #CALCULATION ---------------------------------------------------------------
 
