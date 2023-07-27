@@ -1,5 +1,5 @@
 ---
-title: "Data Call for World AIDS Day"
+title: "Annual Talking Points"
 author: "Karishma Srikanth & Nada Petrovic"
 date: "11/22/2022"
 output:
@@ -24,7 +24,9 @@ knitr::opts_chunk$set(echo = TRUE)
   library(googlesheets4)
 ```
 
-# Data Call for World AIDS Day
+# Purpose
+
+Previously used for: Data for World AIDS Day, 2022 OHA Top Talking Points, PPR
 
 Audience: The public, Agency stakeholders, HIV/AIDS stakeholders, development 
 
