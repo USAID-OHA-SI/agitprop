@@ -1,0 +1,158 @@
+---
+project: fo_organization
+layout: "post"
+title: "Intro to Visualization - 0 Script Structure"
+date: "2023-07-28"
+author: "Prasann Ranade"
+categories: [viz, tools]
+tags: [r]
+output: word_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# Intro to Visualization - 0 The Structure of a Script
+
+## Agenda:
+
+[Guiding purpose of this FO visualization write-up]
+
+[Toward a more modular approach for writing scripts]
+
+[1. Documentation: what's standard boilerplate?](#documentation-whats-standard-boilerplate)
+
+[2. Dependencies: what packages should I load?]
+
+[3. Global Variables: how do I store metadata?]
+
+[4. Importing Data: how do I find my dataset?]
+
+[5. Key topics: common functions and variables]
+
+[6. Demos with specific plots: check out the other scripts]
+
+# Guiding purpose of this FO visualization write-up
+
+As one of the key tools in our data analysis and visualization repertoire, the programming language R is well-used by the SI team and allows us to produce beautiful and functional visuals with efficient, replicable scripts. However, these scripts can easily become complicated with too-specific comments and unique datasets that may make them hard to reuse or decipher by new hires. In this short organizational manual, we will attempt to demystify these scripts, reorganize them into a more modular structure, and improve their accessibility for all users.
+
+# Toward a more modular approach for writing scripts
+
+This document employs the R Markdown document style to provide greater context to and display the outputs of the code in each chunk. Code chunks in all sections are intended to be copied in a pick-and-choose, modular way to provide a template when creating your scripts, and this approach should be especially helpful in the later plotting demo scripts to easily identify key lines of code for each type of plot. Remember to alter variable names or function and try to provide new comments to clarify any choices taken, instead of using them for purely descriptive purpose as in the code chunks in this manual.
+
+## 1. Documentation: what's standard boilerplate? {#documentation-whats-standard-boilerplate}
+
+Let's begin with some boilerplate: the header section, which is commented out at the start of R scripts as it contains documenting information rather than R code. Pay attention to the reference ID for each script to help match up a script and its visual; this ID is usually a random string of numbers instantiated in the final visualization section of a script and included in the visual's caption.
+
+```{r}
+# PROJECT:  FO_organization
+# AUTHOR:  F. Lastname | USAID
+# PURPOSE:  for this script/visual                                           
+# REF ID:   000000000                                                        
+# LICENSE:  MIT
+# DATE:     2023-05-26
+# UPDATED:  2023-05-27
+# NOTE:  any reference scripts
+
+# uncomment this code to generate random reference numbers for your plots      
+#ref_id <- r.Sys.time() |> digest::sha1() |> substr(start = 1, stop = 8) 
+```
+
+## 2. Dependencies: what packages should I load?
+
+Before using R functions in your code to read in data and create visuals, the packages those functions belong to need to be loaded. You can think of these packages or libraries as three groups: the behind-the-scenes of R ("tidyverse", "dplyr"), the behind-the-scenes of SI ("gagglr" [which loads "glitr", "glamr", and "gophr"]), and the behind-the-scenes of plotting/labeling ("tidytext", "ggtext", "patchwork", "scales", "glue"). Calling the name of each library at the start of your code will instantiate the package, and you can also install new packages to your environment from the CRAN repository, R's central repository of packages. Since most SI packages are not on that repository, you will need to download them using devtools.
+
+```{r eval=FALSE}
+# DOCUMENTATION ----------------------------------------------------------------
+# common libraries for most scripts:
+library(tidyverse)
+library(glitr)
+library(glamr)
+library(gophr)
+library(extrafont)
+library(scales)
+library(tidytext)
+library(patchwork)
+library(ggtext)
+library(glue)
+
+# to install common R packages from CRAN
+install.packages("tidyverse") 
+
+# to install SI-specific packages, requires the "devtools" package to be installed
+remotes::install_github("USAID-OHA-SI/glitr")
+```
+
+## 3. Global Variables: how do I store metadata?
+
+The SI team utilizes a standard set of R functions and directory management workflow that is better described in the [Glamr project workflow article](https://usaid-oha-si.github.io/glamr/articles/project-workflow.html). In particular, the "si_setup", "set_paths", and "si_path" functions all help standardize where your data is stored and imported from  your local machine. In this way, instead of setting a new working directory every time and searching for the specific name of your dataset, you can easily pull your dataset from its last known location and with only a few identifying terms, as shown in the next section.
+
+## 4. Importing Data: how do I find my dataset?
+
+Once you have the SI workflow set up from the link above, you can easily import MSD files or other documents using the "return_latest()" function to read in the latest file stored in the Data folder in your directory structure whose name includes the input string. For example, when creating the dataframe below, the training dataset used for these markdown files is being imported by matching on a pattern in the filename. The "df_arch" lines of code similarly import a dataset that matches the "OU_IM_FY15" part in a filename.
+
+Key functions: 
+
+-   **si_path():** set up using the Project Workflow link above 
+
+-   **return_latest():** fetch the last used data file using this SI function 
+
+-   **read_psd():** used to efficiently read in large MSD files
+
+```{r warnings = FALSE, eval=FALSE}
+# import a current MSD with the right fiscal year(s)
+df <- si_path() %>% 
+  return_latest("PSNU_IM_FY48-49") %>% 
+  read_psd()  
+
+# import an archived MSD the same way
+df_arch <- si_path() %>% 
+  return_latest("OU_IM_FY15") %>% 
+  read_psd()
+```
+
+## 5. Key topics: common functions and variables
+
+After importing your dataset, it may be necessary to perform some pre-processing steps like filtering down to specific columns before beginning with data munging.
+
+Key functions:
+
+-   **filter():** filters to a set of values in the columns of a dataframe 
+
+-   **group_by():** group a dataframe by one or more columns 
+
+-   **summarize():** perform an arithmetic function across values in a column (in this case, a sum) 
+
+-   **mutate():** add new columns to a dataframe or modify existing ones 
+
+-   **ungroup():** removes grouping (prevents unintended errors due to grouping)
+
+```{r warnings = FALSE, eval=FALSE}
+df_tx <- df %>% 
+  # filter to these values
+  filter(indicator %in% c("TX_CURR", "TX_NEW", "HTS_TST_POS"),
+        
+         #we’ll discuss std. disaggregates later, but here it means that            
+         #we’re choosing the total numbers for each indicator
+         standardizeddisaggregate %in% "Total Numerator") %>% 
+  
+  # choose the order to group rows by (ex. by planet first then indicator)
+  group_by(operatingunit, fiscal_year, indicator) %>% 
+  
+  # sum up values for each indicator 
+  summarize(across(c(cumulative, targets), sum, na.rm = TRUE)) %>% 
+  #summarize(across(targets, sum, na.rm = TRUE)) %>% 
+  
+  # rename the fiscal_year column
+  rename(period = fiscal_year) %>%
+  mutate(period = str_replace(period, "20", "FY")) %>%
+  
+  # ungroup columns after doing any data manipulation
+  ungroup()
+```
+
+Additionally, just as most MSDs or other datasets use a consistent set of columns and values, it is important to keep variable names consistent when writing scripts. For example, variables used for dataframes when importing and using data will include "df", "df_arch", "df_tx", "df_prep", or "df_viz" as shown in the code chunk above. Remember to create a new dataframe when performing munging or visualization instead of modifying the original dataset, to make it easier to see changes across dataframes.
+
+## 6. Demos with specific plots: check out the other scripts
+
+As mentioned earlier, this set of visualization scripts will include demo scripts to create particular kinds of plots. Specifically, the remaining scripts will each aim to pull a prepped MSD dataframe into ggplot and make the following kinds of charts: 1. a bar chart showing results across time (or results/targets across time with stacked bars) 2. faceted plots by top countries 3. plots broken out by age/sex standardized disaggregates Those scripts will be written in a similar modular manner, so pick and choose sections from this document and other documents to put together a cohesive script!

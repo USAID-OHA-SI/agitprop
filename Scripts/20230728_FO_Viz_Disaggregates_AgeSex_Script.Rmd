@@ -1,0 +1,195 @@
+---
+title: "Intro to Visualization - 3 Age/Sex Disaggregates"
+author: "Prasann Ranade"
+date: "2023-06-26"
+output:
+  word_document:
+    toc: yes
+    toc_depth: 2
+  html_document:
+    toc: yes
+    toc_depth: '2'
+    df_print: paged
+layout: post
+categories:
+- viz
+- tools
+- disaggregates
+tags: r
+project: fo_organization
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+# Intro to Visualization - 1 Visualizing Targets vs. Results
+
+## Agenda:
+
+[1. Overview]
+
+[2. Data Cleaning: how do I get a relevant subset of the dataset?]
+
+[3. Additional data filtering prior to visualization]
+
+[4. Visualizing your data]
+
+``` {r warnings = FALSE, include = FALSE, message = FALSE}
+library(tidyverse)
+library(gagglr)
+library(extrafont)
+library(scales)
+library(tidytext)
+library(tidyverse)
+library(patchwork)
+library(ggtext)
+library(glue)
+library(gt)
+library(webshot2)
+library(ggalluvial)
+```
+
+# 1. Overview
+
+This script will follow the same structure as the others: we will begin with a brief discussion of standardized disaggregates, then move onto ways to subset those disaggregates from a total dataframe of results and targets for a set of indicators, then prep the dataframe for visualization, create a visual using ggplot, and end by saving the visual as an svg and png file.
+
+Standardized disaggregates look at a subset of the population across categories like age, sex, and treatment modality, and paying attention to these categories allows us to discover disparities in testing and treatment across age, sex, and KP groups. In this script, we'll choose a particular indicator and its associated standardized disaggregate and visualize the bands for that disaggregate in a small multiple-style plot.
+
+# 2. Data Cleaning: how do I get a relevant subset of the dataset?
+
+As each indicator has a particular standardized disaggregate associated with it, we want to make sure we choose the correct one and filter our MSD accordingly. In this script, we will use "TX_CURR" as the indicator and "Age/Sex/HIVStatus" as the standardized disaggregate.
+
+``` {r warning = FALSE, message = FALSE}
+# import training dataset from the last-used location
+df <- si_path() %>% 
+  return_latest("OU_IM_FY15-20") %>% 
+  read_psd() 
+head(df)
+```
+
+# 3. Additional data filtering prior to visualization
+
+After reading in the data, let's perform some steps unique to age/sex disaggregates. Namely, let's assemble a table of indicators and their associated standardized disaggregates, and use those values to filter our dataset accordingly. As we are interested in looking at age and sex bands, we can pull out the standardizeddisaggregate and otherdisaggregate (additional information) columns, along with the age_2019 column that includes standardized age bands.
+
+``` {r warning = FALSE, message = FALSE}
+# reference table of age/sex disaggregates for each indicator
+df_disaggs <- tibble::tribble(
+  ~indicator,      ~standardizeddisaggregate,
+  "HTS_TST_POS",   "Modality/Age/Sex/Result",
+  "TX_CURR",       "Age/Sex/HIVStatus",
+  "TX_NEW",        "Age/Sex/HIVStatus",
+  "TX_PVLS",       "Age/Sex/Indication/HIVStatus",
+  "PrEP_NEW",      "Age/Sex")
+
+df_tx <- df %>% 
+  # filter to TX_CURR and 2022
+  filter(operatingunit == "Namibia",
+         indicator == "TX_CURR",
+         standardizeddisaggregate == "Age/Sex/HIVStatus",
+         age_2019 != "Retired Age Band" & age_2019 != "Unknown Age",
+         sex != "Unknown Sex") %>%
+  
+  # choose the order to group rows by and include the age_2019 column for age bands
+  group_by(operatingunit, indicator, fiscal_year, standardizeddisaggregate, otherdisaggregate, sex, age_2019) %>% 
+  
+  # sum up values for each indicator across all regions 
+  summarize(across(c(cumulative, targets), sum, na.rm = TRUE), .groups = "drop") %>% 
+  
+  # rename the fiscal_year column
+  rename(period = fiscal_year) %>%
+  mutate(period = str_replace(period, "20", "FY")) %>%
+  mutate(age = case_when(age_2019 %in% c("<01", "01-04", "05-09", "10-14") ~ "Children", 
+                         age_2019 %in% c("15-19", "20-24", "25-29") ~ "Youth",
+                         age_2019 %in% c("30-34", "35-39", "40-44", "45-49") ~ "Middle Aged",
+                         age_2019 %in% c("50+") ~ "Older Adults")) %>% 
+  mutate(achievement = round((cumulative/ifelse(targets==0,NA,targets))*100, digits = 0)) %>% 
+  # ungroup columns after doing any data manipulation
+  ungroup()
+
+# show new dataframe
+head(df_tx)
+```
+
+# 4. Visualizing your data
+
+With our dataframe now correctly grouped by indicator, period, disaggregates, sex, and age bands, let's build a plot that delineates the extent of each age group on a horizontal bar plot. With this, we can picture the ranges for each age bands as compared to each other.
+
+Key functions:
+
+-   **geom_line():** add a horizontal line as a component to the visual to represent age bands
+    (we don't need to specify x or y values because they were initialized in the ggplot function.
+
+``` {r warning = FALSE, message = FALSE}
+#DESCRIPTIVE ANALYTICS ---------------------------------------------------
+# Reference ID to be used for searching GitHub
+ref_id <- "000111"
+
+df_viz <- df_tx %>% 
+  ggplot(aes(cumulative, age_2019)) +
+  
+  # use the geom_line function to create age lines
+  geom_line(aes(),linewidth=1) +
+  
+  # include a meaningful title and subtitle
+  labs(title = glue("YOUTH UNDERREPRESENTED IN TX_CURR, OLDER AGE BANDS OVERREPRESENTED"),
+       subtitle = glue("Age breakdown for TX_CURR compared to total PLHIV"), 
+       caption = glue("Source: OU_IM_FY15-20 | USAID/OHA/SIEI | Ref ID: 000111"),
+       x = "% Share by age group",
+       y = "") +
+   
+  # additional conditions
+  scale_fill_manual() +
+  si_style_yline()  
+
+plot(df_viz)
+```
+And as a second visual, let's create a facet plot with different lines for each age_band and stratified by sex.
+
+``` {r warning = FALSE, message = FALSE}
+# Add facets and labels
+df_viz <- df_tx %>% 
+  ggplot(aes(x=period, y=cumulative)) + 
+  geom_point(aes(color=sex), size = 4, alpha = .8) +
+  geom_line(aes(group=sex, color=sex), linewidth=1, alpha = .8) +
+  scale_x_discrete() +
+  scale_y_continuous(labels = comma) +
+  scale_color_manual(values = c("Female" = moody_blue, "Male" = genoa),
+                     labels = function(x) str_to_upper(x)) +
+  facet_wrap(age_2019 ~ ., scales = "fixed", ncol=4, dir="h") +
+  si_style_ygrid() +
+  theme(strip.text.x = element_text(size = 12, face="bold"),
+        axis.text.x = element_text(size=6),
+        axis.text.y = element_text(size=10, angle=0))+
+  theme(plot.subtitle = element_markdown()) +
+  theme(legend.position = "none") +
+  coord_cartesian(clip="off") +
+  labs(x = NULL, y = NULL,
+       title = glue("WOMEN OVER 20 WERE OVER-REPRESENTED IN TREATMENT"),
+       subtitle = glue("Comparing <span style = 'color:{genoa}'>Men</span> and 
+                         <span style = 'color:{moody_blue}'>Women</span> in Namibia across FY15-20"),
+       caption = glue("| USAID/OHA/SIEI |  Ref ID:"))
+
+plot(df_viz)
+```
+
+And as a third visual, let's try something interesting with a waterfall (alluvial) chart, to show
+the flows of people between each sex and age categories.
+
+``` {r warning= FALSE, message = FALSE}
+ggplot(data = df_tx %>% filter(period %in% c("FY18", "FY19", "FY20")),
+       aes(axis1 = period, axis2 = sex, axis3 = age,
+           y = cumulative)) +
+  scale_x_discrete(limits = c("Period", "Sex", "Age"), expand = c(.2, .05)) + xlab("Demographic") +
+  
+  geom_alluvium(aes(fill = sex), aes.bind=TRUE, width = 1/12) +
+  geom_stratum(width = 1/4, fill = "white", color = "black") +
+  #geom_text(stat = "stratum", label.strata = TRUE) +
+  geom_label(stat = "stratum", aes(label = after_stat(stratum))) +
+  si_style_nolines() +
+  ggtitle("MIDDLE AGED WOMEN COMPRISE THE MAJORITY OF THE TX_CURR POPULATION",
+          "stratified by period, sex, and age")
+```
+
+``` {r}
+si_save("Images/Equity_Indicators_vs_PLHIV_age_bands.png", path = "Images")
+```
