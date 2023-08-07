@@ -74,7 +74,7 @@ df_hts <- df %>%
          standardizeddisaggregate == "Total Numerator") 
 
 df_hts <- df_hts %>%
-  bind_rows(df_hts %>% mutate(fundingagency = "PEPFAR")) %>% 
+  bind_rows(df_hts %>% mutate(funding_agency = "PEPFAR")) %>% 
   group_by(fiscal_year, fundingagency) %>% 
   summarise(across(c(cumulative), sum, na.rm = TRUE)) %>% 
   ungroup() %>% 
