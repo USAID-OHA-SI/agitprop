@@ -27,10 +27,10 @@
   dir_graphics <- "./Graphics"
   
   file_ou_im_curr <- dir_merdata %>% 
-    return_latest(pattern = "OU_IM_FY20-22_\\d{8}.*")
+    return_latest(pattern = "OU_IM_FY21-23_\\d{8}.*")
   
   file_ou_im_prev <- dir_merdata %>% 
-    return_latest(pattern = "OU_IM_FY15-19_\\d{8}.*")
+    return_latest(pattern = "OU_IM_FY15-20_\\d{8}.*")
   
   epi_cntries <- c("Kenya", "Uganda", "Botswana", 
                    "Lesotho", "Eswatini", "Namibia")
