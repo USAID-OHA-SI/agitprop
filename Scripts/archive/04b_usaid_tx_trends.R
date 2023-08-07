@@ -34,7 +34,7 @@
   
   #Current MSD
   df <- si_path() %>% 
-    return_latest("OU_IM_FY20") %>% 
+    return_latest("OU_IM_FY21") %>% 
     read_msd()
   
   #Archived MSD
@@ -48,6 +48,8 @@
   curr_pd <- identifypd(df)
   curr_fy <- identifypd(df, "year")
   msd_source <- source_info()
+  
+  get_metadata()
   
   df_tx <- df %>% 
     bind_rows(df_arch) %>% 
@@ -101,7 +103,7 @@ df_tx %>%
                        n.breaks = unique(df_tx$period) %>% length())+
     geom_text(aes(label = clean_number(value, 1), vjust = -0.3,
                   family = "Source Sans Pro")) +
-    expand_limits(y = 72e5) +
+    expand_limits(y = 78e5) +
     scale_fill_manual(values = c(genoa_light, genoa)) +
     scale_alpha_identity() +
     labs(x = NULL, y = NULL, fill = NULL,
@@ -111,8 +113,8 @@ df_tx %>%
                         SI analytics: {paste(authors, collapse = '/')} | Ref ID: {ref_id}")) +
     si_style_nolines()
 
-# 
-   si_save("Images/04b_tx_trends_usaid.png")
+  # 
+   si_save("Images/04b_tx_trends_usaid_2023.png")
    si_save("Graphics/04b_tx_trends_usaid.svg")
   
   

@@ -1,6 +1,7 @@
 # PROJECT:  agitprop
 # AUTHOR:   A.Chafetz | USAID
 # PURPOSE:  scale up of prep
+
 # LICENSE:  MIT
 # DATE:     2021-05-20
 # UPDATED:  2021-08-23
@@ -24,14 +25,16 @@
   
   authors <- c("Aaron Chafetz", "Tim Essam")
   
+  ref_id <- "08e5947b"
+  
 # IMPORT ------------------------------------------------------------------
   
   df <- si_path() %>% 
-    return_latest("OU_IM_FY19") %>% 
+    return_latest("OU_IM_FY21") %>% 
     read_msd()   
   
   df_arch <- si_path() %>% 
-    return_latest("OU_IM_FY15") %>% 
+    return_latest("OU_IM_FY15-20") %>% 
     read_msd()
 
 # MUNGE -------------------------------------------------------------------
@@ -39,7 +42,7 @@
   #bind archived + current MSD and filter for PrEP
   df_prep <- df %>%
     bind_rows(df_arch) %>% 
-    filter(fundingagency == "USAID",
+    filter(funding_agency == "USAID",
            indicator == "PrEP_NEW",
            standardizeddisaggregate == "Total Numerator",
            fiscal_year >= 2017)
@@ -52,12 +55,12 @@
   #count number of countries with PrEP
   df_cntry_cnt <- df_prep %>% 
     filter(cumulative > 0) %>% 
-    distinct(fiscal_year, countryname) %>% 
+    distinct(fiscal_year, country) %>% 
     count(fiscal_year, name = "n_countries")
   
   #aggregate result to USAID level
   df_prep <- df_prep %>% 
-    group_by(fiscal_year, fundingagency) %>% 
+    group_by(fiscal_year, funding_agency) %>% 
     summarise(across(starts_with("qtr"), sum, na.rm = TRUE)) %>% 
     ungroup() %>% 
     reshape_msd() %>% 
@@ -114,7 +117,7 @@
     arrange(period)
   
   df_viz %>% 
-    ggplot(aes(period, value, group = fundingagency)) + 
+    ggplot(aes(period, value, group = funding_agency)) + 
     geom_area(fill = scooter, color = scooter, alpha = .2, size = 1, na.rm = TRUE) +
     geom_vline(xintercept = fy_start, color = "white", 
                size = .9, linetype = "dotted") +
@@ -128,9 +131,7 @@
                       countries, up from {filter(df_cntry_cnt, fiscal_year == 2017) %>% pull()} \\
                       countries in 2017") %>% toupper,
          subtitle = "Pre-Exposure Prophylaxis (PrEP) Quarterly Results",
-         caption = glue("Source: {msd_source}
-                        SI analytics: {paste(authors, collapse = '/')}
-                     US Agency for International Development")) +
+         caption = metadata$caption) +
     si_style_ygrid()
     
   si_save("Images/09a_prep_scaleup.png")  
