@@ -1,8 +1,10 @@
 ## PROJECT: groundhog_day
 ## AUTHOR:  K. Srikanth | USAID
 ## PURPOSE: 95's Achievement
+# REF ID:   5ba96db8 
 ## LICENSE: MIT
 ## DATE:    2022-06-08
+# UPDATED: 2023-08-25
 ## NOTE: agitprop/Scripts/06_epi_ann-90s.R
 
 
@@ -31,14 +33,16 @@ goal <- 95
 #indicators
 ind_sel <- c("Percent Known Status of PLHIV","Percent on ART with Known Status", "Percent VLS on ART")
 
+ref_id <- "5ba96db8"
+
 
 # IMPORT ------------------------------------------------------------------
 
 #Cascade %
-df_unaids <- pull_unaids(TRUE, "HIV Test & Treat", pepfar_only = TRUE)
+df_unaids <- pull_unaids("HIV Test & Treat", pepfar_only = TRUE)
 
 #PLHIV number
-df_est <- pull_unaids(TRUE, "HIV Estimates", pepfar_only = TRUE)
+df_est <- pull_unaids("HIV Estimates", pepfar_only = TRUE)
 
 #PEPFAR select list
 pepfar_cntry <- pepfar_country_list %>% 
@@ -72,7 +76,7 @@ df_unaids <- df_unaids %>%
 df_viz <- df_unaids %>% 
   select(-c(lower_bound:upper_bound)) %>% 
   left_join(df_est, by = c("country")) %>% 
-  filter(country != "Vietnam") %>%
+  filter(country != "Ukraine") %>%
   mutate(country = case_when(country == "Democratic Republic of the Congo" ~ "DRC",
                              country == "Dominican Republic" ~ "DR", 
                              TRUE ~ country),
@@ -113,11 +117,13 @@ df_viz <- df_viz %>%
 # PLOT --------------------------------------------------------------------
 
 epi_ctrl_cnt <- df_viz %>% 
-  filter(grouping == "Achieved") %>% 
+  filter(grouping == "Achieved",
+         !is.na(value)) %>% 
   distinct(country) %>% 
   nrow()
 
 df_viz %>% 
+  filter(!is.na(value)) %>% 
   ggplot(aes(value, country, color = dot_color)) +
   geom_vline(xintercept = goal, linetype = "dashed") + 
   geom_linerange(aes(xmin = gap_bar, xmax = goal), color = "gray90",
@@ -128,12 +134,11 @@ df_viz %>%
   scale_color_identity() +
   facet_grid(grouping~indicator, scales = "free_y", space = "free_y") +
   labs(x = NULL, y = NULL, color = NULL,
-       title = glue("AS OF 2020, {epi_ctrl_cnt} PEPFAR COUNTRY HAS ACHIEVED THE UNAIDS' 2030 FAST TRACK TARGETS"),
-       caption = glue("Source: UNAIDS 90-90-90 15+ (2020)
-                      SI analytics: {paste(authors, collapse = '/')}
-                     US Agency for International Development")) +
+       title = glue("AS OF 2022, {epi_ctrl_cnt} PEPFAR COUNTRY HAS ACHIEVED THE UNAIDS' 2030 FAST TRACK TARGETS"),
+       caption = glue("Source: {source_note}
+                       Ref id: {ref_id}")) +
   si_style_xgrid() +
   theme(strip.text.y = element_blank(),
         panel.spacing = unit(.5, "lines"))
 
-si_save("Graphics/06_epi_ann-90s.svg")
+si_save("Graphics/06_epi_ann-95s_2022_update.svg")
