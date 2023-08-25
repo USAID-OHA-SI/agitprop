@@ -1,9 +1,10 @@
 # PROJECT:  agitprop
 # AUTHOR:   A.Chafetz | T.Essam | K. Srikanth | USAID
 # PURPOSE:  Global decline in new child HIV Infections
+# REF ID:   f5039d67 
 # LICENSE:  MIT
 # DATE:     2021-07-19
-# UPDATED:  2022-08-25 (new 2022 UNAIDS data)
+# UPDATED:  2023-08-25 (new 2022 UNAIDS data)
 # NOTE:     Created based on request from FO "2 visuals for AHOP deck" -- 2021-07-16
 
 
@@ -29,6 +30,8 @@
   load_secrets()
   authors <- c("Aaron Chafetz", "Tim Essam", "Karishma Srikanth")
   source <- source_note
+  ref_id <- "f5039d67"
+  
 
 # Creates a new dataframe so you can call geom_richtext() in the viz flow. This allows for markedup annotations.
   note_df <- tibble(
@@ -46,7 +49,12 @@
 # IMPORT ------------------------------------------------------------------
 # Grab data from google drive
   epi_glbl <- pull_unaids("HIV Estimates", FALSE) %>% 
-    filter(country == "Global", str_detect(indicator, "(AIDS Related|New HIV Infections)"))
+    filter(country == "Global", str_detect(indicator, "(Total deaths|New HIV Infections)"))
+  
+ max_year <- epi_glbl %>%
+    filter(year == max(year)) %>% distinct(year) %>% pull()
+ 
+ ten_year_prior <- max_year - 10
 
   # Check that filters have not changed
   epi_glbl %>% count(country) %>% prinf()
@@ -60,29 +68,30 @@
     mutate(delta = (estimate - lag(estimate)) / lag(estimate),
            delta_10 = (estimate - lag(estimate, n = 10))/lag(estimate, n = 10))
   
+  #no death data for children
   epi_viz_deaths <- 
     epi_glbl %>% 
-    filter(age == "0-14", str_detect(indicator, "AIDS Related Deaths")) 
+    filter(age == "0-14", str_detect(indicator, "Total deaths to HIV population")) 
   
-  epi_viz_decade <- epi_viz %>% filter(year %in% c(2011, 2021))
+  epi_viz_decade <- epi_viz %>% filter(year %in% c(ten_year_prior, max_year))
 
 # VIZ ---------------------------------------------------------------------
 
   # Let's try a faint time-series graph overlaid with a slope graph showing change between 2010-2020
   BAN <- epi_viz %>% filter(year == max(year)) %>% pull(delta_10)
   end_point <- epi_viz %>% filter(year == max(year)) %>% pull(estimate)
-  plot_title <- glue("NEW HIV INFECTIONS AMONG CHILDREN DECLINED BY ALMOST HALF ({percent({BAN}, 1)}) FROM 2011 TO 2021")
+  plot_title <- glue("NEW HIV INFECTIONS AMONG CHILDREN DECLINED BY ALMOST HALF ({percent({BAN}, 1)}) FROM {ten_year_prior} TO {max_year}")
 
   epi_viz %>% 
     mutate(label = "New HIV Infections\n0 - 14 year olds") %>% 
   ggplot(aes(x = year, y = estimate)) +
-  geom_area(data = . %>% filter(year < 2012), fill = "#C6D5E9", alpha = 0.85) +
-  geom_area(data = . %>% filter(year >= 2011), fill = "#d8e3f0", alpha = 0.85) +
+  geom_area(data = . %>% filter(year < ten_year_prior+1), fill = "#C6D5E9", alpha = 0.85) +
+  geom_area(data = . %>% filter(year >= ten_year_prior), fill = "#d8e3f0", alpha = 0.85) +
   geom_line(color = "white", size = 3) +
   geom_line(color = denim, size = 1) +
   geom_line(data = epi_viz_decade, linetype = "dashed", color = grey50k, size = 0.5) +
   geom_point(data = epi_viz_decade, color = "white", size = 5) +
-  geom_point(data = . %>% filter(year %in% c(2011, 2021)), aes(y = estimate), shape = 1, size = 5, color = grey90k) +
+  geom_point(data = . %>% filter(year %in% c(ten_year_prior, max_year)), aes(y = estimate), shape = 1, size = 5, color = grey90k) +
   annotate(geom = "text", x = 1998, y = 5e5, label = c("New HIV Infections\n0-14 year olds"), hjust = 0, vjust = 1,
             family = "Source Sans Pro SemiBold", color = denim, size = 14/.pt) +
   annotate(geom = "text", x = 2015, y = 2.5e5, label = paste(percent(BAN, 1), " decline"),
@@ -101,10 +110,9 @@
   labs(x = NULL, y = NULL,
        title = plot_title,
          caption =  glue("Source: {source}
-                     SI analytics: {paste(authors, collapse = '/')}
-                     US Agency for International Development"))   
+                         Ref id: {ref_id}"))   
 
-  si_save("Images/04_epi_ann_clhiv_new_infections_decline_v1.png", scale = 1.2)  
+  si_save("Graphics/04_epi_ann_clhiv_new_infections_decline_update2022.svg", scale = 1.2)  
   
 
 # TINKERING WITH FILLED STEP ----------------------------------------------
