@@ -52,27 +52,10 @@ ref_id <- "d565f3f7"
 # IMPORT ------------------------------------------------------------------
 
   df_epi <- pull_unaids("HIV Estimates", TRUE)
-  
-  #pull Total PLHIV death data
-  g_id <- "1CSVOauu2gyq9Am0eCl7TgpAeB1Xd3dCtE_Oc_yk3cI4"
-  
-  df_deaths <- range_speedread(ss = g_id, sheet = "UNAIDS_epi_control") %>% 
-    filter(indicator == "Number Total Deaths HIV Pop")
 
 
 # MUNGE -------------------------------------------------------------------
 
-  #change since PEPFAR start years
-  # df_epi %>% 
-  #   filter(stat == "est",
-  #          age == "all",
-  #          country == "Global", 
-  #          indicator %in% c("AIDS Related Deaths", "New HIV Infections", "PLHIV")) %>% 
-  #   filter(year %in% c("2003", max(year))) %>% 
-  #   select(year, indicator, value) %>% 
-  #   spread(year, value) %>% 
-  #   mutate(diff = `2020` - `2003`)
-  
   df_epi_pepfar <- df_epi %>% 
     filter(
       #stat == "est",
@@ -82,25 +65,6 @@ ref_id <- "d565f3f7"
     # semi_join(pepfar_country_list, by = c("iso" = "countryname_iso")) %>%
     select(year, country, indicator, estimate) %>%
     arrange(country, indicator, year)  
-
-  
-  df_epi %>% 
-    filter(
-      year == max(year),
-      age == "All",
-      sex == "All",
-      indicator %in% c("Number New HIV Infections")) %>% 
-    count(epi_control)
-  
-  # #grab total deaths
-  # total_deaths <- df_deaths %>% 
-  #   #select(-c(iso2, geo_level)) %>% 
-  #   filter(age == "all",
-  #          sex == "all") %>% 
-  #   select(c(country, year, indicator, estimate)) %>% 
-  #   spread(indicator, estimate) %>% 
-  #   janitor::clean_names() %>% 
-  #   rename(total_deaths = number_total_deaths_hiv_pop)
 
   df_epi_pepfar <- df_epi_pepfar %>% 
         pivot_wider(names_from = "indicator", values_from = "estimate") %>%
