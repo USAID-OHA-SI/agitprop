@@ -3,6 +3,7 @@
 # PURPOSE:  USAID footprint globally (geographic coverage)
 # LICENSE:  MIT
 # DATE:     2021-05-11
+# REF ID:   92d1ad81 
 # UPDATED:
 # NOTE:     adapted from USAID-OHA-SI/lastmile (linked below)
 # URL:      https://github.com/USAID-OHA-SI/lastmile/blob/master/Scripts/99_FY20Q4_USAID_PEPFAR_Countries.R
@@ -29,12 +30,15 @@
 
 # GLOBAL VARIABLES --------------------------------------------------------
   
-  authors <- c("Aaron Chafetz", "Tim Essam")
+  authors <- c("Aaron Chafetz", "Tim Essam", "Karishma Srikanth")
   
  filepath <-  si_path() %>% 
     return_latest("OU_IM_FY21")
  
  get_metadata(filepath)
+ 
+ ref_id <- "92d1ad81"
+ 
 
 # IMPORT ------------------------------------------------------------------
   
@@ -62,12 +66,31 @@
   #current FY
     curr_fy <- identifypd(df_ou, "year")
     
+  #
+    pepfar_country_list
+    
   #identify all places USAID has targets
-    df_cntry <- df_ou %>% 
-      filter(funding_agency == "USAID",
-             fiscal_year == metadata$curr_fy,
-             !is.na(targets)) %>% 
-      distinct(operatingunit, country)
+    df_cntry <- df_ou
+    
+   df_fsd <- si_path() %>%
+  return_latest("Financial") %>% read_psd()
+
+df_cntry <- df_fsd %>%
+  filter(fiscal_year == metadata$curr_fy,
+         str_detect(country, "Region", negate = TRUE),
+         cop_budget_total > 0,
+         funding_agency %ni% c("Dedup", "Default")) %>%
+  distinct(operatingunit, country)
+
+
+ou_table <- grabr::get_outable(datim_user(), datim_pwd())  %>%
+  select(operatingunit, operatingunit_iso, operatingunit_uid,
+         country, country_iso, country_uid)
+
+pepfar_country_list <- df_cntry %>%
+  left_join(ou_table, by = c("operatingunit", "country")) %>%
+  relocate(starts_with("op")) %>%
+  arrange(operatingunit, country)
   
     # Define a projection to make Greenland a bit smaller & allow for zooom
     spdf <- ms_simplify(spdf, keep = 0.75)
@@ -92,8 +115,7 @@
             color = "white",
             size = .2) +
     labs(title = glue("USAID SUPPORTS PEPFAR PROGRAMMING ACROSS {cont_count} CONTINENTS IN {nrow(spdf_ou)} COUNTRIES"),
-         caption = glue("Source: {metadata$source}
-                     SI analytics: {paste(authors, collapse = '/')}
+         caption = glue("{metadata$caption}
                      US Agency for International Development")) +
     si_style_map() +
       # coord_sf(xlim = c(-1e7, 1.5e7), ylim = c(-4e6, 6e6), clip = "on", expand = T) +
