@@ -25,10 +25,7 @@
   
   authors <- c("Aaron Chafetz", "Tim Essam", "Karishma Srikanth")
 
-  msd_source <- source_info()
-  curr_pd <- source_info(return = "period")
-  curr_fy <- source_info(return = "fiscal_year")
-  curr_qtr <- source_info(return = "quarter")
+get_metadata()
   
   ref_id <- "a92e1bd0"
   
@@ -176,15 +173,15 @@
     geom_errorbar(aes(ymax = tx_curr, ymin = tx_curr), color = trolley_grey) +
     # facet_wrap(~otherdisaggregate) +
     facet_wrap(~otherdisaggregate_md) +
-    scale_x_discrete(breaks = c("FY20Q2", "FY20Q4", "FY21Q2", "FY21Q4", "FY22Q2", "FY22Q4")) +
+    scale_x_discrete(breaks = c("FY20Q2", "FY20Q4", "FY21Q2", "FY21Q4", "FY22Q2", "FY22Q4", "FY23Q2")) +
     scale_fill_identity() +
     scale_y_continuous(labels = label_number_si(),
                        position = "right", expand = c(.005, .005)) +
     labs(x = NULL, y = NULL,
          title = "USAID HAS WORKED TO ENSURE MORE PATIENTS HAVE ACCESS TO MULTI MONTH DISPENSING (MMD)",
          subtitle = "South Africa, representing a third of USAID's treatment portfolio, has been excluded",
-         caption = glue("MMD 3 months or more = 3-5 months and 6 months or more | Source: {msd_source}
-                        SI analytics: {paste(authors, collapse = '/')} | Ref ID: {ref_id}")) +
+         caption = glue("MMD 3 months or more = 3-5 months and 6 months or more
+                        {metadata$caption}")) +
     si_style_ygrid() +
     theme(legend.position = "none",
           strip.text.x = element_markdown(family = "Source Sans Pro SemiBold", size = 13))
