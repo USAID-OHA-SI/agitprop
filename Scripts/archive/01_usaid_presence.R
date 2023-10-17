@@ -4,7 +4,7 @@
 # LICENSE:  MIT
 # DATE:     2021-05-11
 # REF ID:   92d1ad81 
-# UPDATED:
+# UPDATED:  2023-10-17
 # NOTE:     adapted from USAID-OHA-SI/lastmile (linked below)
 # URL:      https://github.com/USAID-OHA-SI/lastmile/blob/master/Scripts/99_FY20Q4_USAID_PEPFAR_Countries.R
 
@@ -53,7 +53,10 @@
                          returnclass = "sf") %>% 
       select(sovereignt, admin, name, adm0_a3, continent, subregion) %>% 
       filter(admin != "Antarctica") %>% # Remove Antarctica
-      clean_countries(colname = "admin")
+      clean_countries(colname = "admin") %>% 
+      mutate(sovereignt = ifelse(sovereignt == "Swaziland", "Eswatini", sovereignt),
+             admin = ifelse(admin == "Swaziland", "Eswatini", admin),
+             name = ifelse(name == "Swaziland", "Eswatini", name))
   
 
 # MUNGE -------------------------------------------------------------------
@@ -65,6 +68,7 @@
     
   #current FY
     curr_fy <- identifypd(df_ou, "year")
+    get_metadata(path = si_path() %>% return_latest("Financial"))
     
   #
     pepfar_country_list
@@ -100,7 +104,7 @@ pepfar_country_list <- df_cntry %>%
   # Join MSD with shapefiles
     spdf_ou <- spdf_rob %>% 
       right_join(df_cntry, 
-                by = c("admin" ="country"))
+                by = c("admin" = "country"))
   
   
 ## VIZ ---------------------------------------------------------
@@ -134,15 +138,20 @@ tbl <-  spdf_ou %>% st_drop_geometry() %>% count(continent, name) %>%
              name) %>% 
       group_by(Continent) %>% 
       summarise(`Countries Supported` = paste(name, collapse = ", ")) %>% 
-   mutate(`Countries Supported` = str_wrap(`Countries Supported`, width = 100))
+   mutate(`Countries Supported` = str_wrap(`Countries Supported`, width = 100)) %>% 
+  filter(!is.na(Continent))
 
       
-  gt_grob <- gridExtra::tableGrob((tbl), rows = NULL, theme = gridExtra::ttheme_minimal(base_family = "Source Sans Pro",
-                                                                             core = list(fg_params = list(hjust=0, x=0.1, 
-                                                                                                          fontsize = 12)
-                                                                                         )
-                                                                             )
-                                  )
+  gt_grob <- gridExtra::tableGrob((tbl),
+    rows = NULL,
+    theme = gridExtra::ttheme_minimal(
+      base_family = "Source Sans Pro",
+      core = list(fg_params = list(
+        hjust = 0, x = 0.1,
+        fontsize = 12
+      ))
+    )
+  )
 
   map / gt_grob
   
