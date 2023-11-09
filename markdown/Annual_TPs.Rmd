@@ -1,7 +1,7 @@
 ---
 title: "Annual Talking Points"
-author: "Karishma Srikanth & Nada Petrovic"
-date: "11/22/2022"
+author: "Karishma Srikanth"
+date: "11/8/2023"
 output:
   word_document
 ---
@@ -26,7 +26,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Purpose
 
-Last Updated: 10/13/23
+Last Updated: 11/8/23
 
 Previously used for: Data for World AIDS Day 2022, 2022 OHA Top Talking Points, PPR
 
