@@ -67,7 +67,8 @@ The clearance timeline is:
       # Grab metadata
     get_metadata(filepath) 
   
-
+# MSD PREP --------------------------------------
+    
   #read MSD
   df_msd <- read_psd(filepath)
     
@@ -76,6 +77,7 @@ The clearance timeline is:
     return_latest("All indicators_FY23Q4_Nigeria") %>% 
     read_csv()
   
+  #select only names in MSD
   names_to_keep <- names(df_msd)
   setdiff(names(df_msd), names(df_nga)) #only qtrs
   setdiff(names(df_nga), names(df_msd))
@@ -90,12 +92,10 @@ The clearance timeline is:
     select(-c(qtr1:qtr4)) %>% 
     rbind(df_nga_new)
 
-# load source functions
-#source("Scripts/archive/99_utilities.R")
-
-#LOCAL PARTNER
+#LOCAL PARTNER DATA PREP --------------------------------------------------------
+  
 #Read in the google sheet hyperfile with local partner
-sheet_id <- "1MQviknJkJDttGdNEJeNaYPKmHCw6BqPuJ0C5cslV5IE"
+sheet_id <- "1tGk1TR8l3WacR8qMIK0AQvFynABijAaLHeIctE1nUoM"
 
 df_partner <- read_sheet(sheet_id, sheet = "MechID-PartnerType", range = "A:B") %>% 
   clean_names() %>% 
@@ -104,6 +104,41 @@ df_partner <- read_sheet(sheet_id, sheet = "MechID-PartnerType", range = "A:B") 
          partner_type = case_when(partner_type == "Regional" ~ "Local",
                                   partner_type == "TBD Local" ~ "Local", TRUE ~ partner_type))
 
+
+# DREAMS DATA PREP --------------------------------------------------------------
+
+# Google sheet ID for DREAMS DSNU list
+  dsnu_g_id <- "1YaGWvpkiXVPiAwA3KyHwFtbZHrVeCz6DijWPCKpUN-Q"
+  
+  #MSD path
+  dsnu_msd_path <- si_path() %>% 
+    return_latest("PSNU_IM_DREAMS_FY21-24")
+  
+    #import DREAMS DSNU crosswalk
+    #recommend adding psnu_uids to this sheet
+ dsnu_list <- read_sheet(dsnu_g_id, sheet = "CURRENT (FY23/COP22)")
+
+#rename names
+names(dsnu_list)<-c("operatingunit", "psnu", "dsnu", "agencies_FY23")
+
+#import msd and filter to current year
+df_msd_dreams <- read_psd(dsnu_msd_path) %>% 
+  filter(fiscal_year == metadata$curr_fy)
+
+msd_dsnu_xwalk <- df_msd_dreams %>% 
+  count(operatingunit, operatingunituid, psnu, psnuuid, cop22_psnu, cop22_psnuuid, dsnu, dsnuuid) %>% 
+  mutate(raised_lvl = ifelse(psnuuid != cop22_psnuuid, TRUE, FALSE)) %>% 
+  mutate(dsnu_new = case_when(operatingunit != "Uganda" & raised_lvl == TRUE ~ cop22_psnu,
+                          TRUE ~ dsnu),
+         dsnuuid_new = case_when(operatingunit != "Uganda" & raised_lvl == TRUE ~ cop22_psnuuid,
+                          TRUE ~ dsnuuid))
+
+#join the new xwalk back to msd and then join the internal dsnu list to the msd
+df_dreams_all <- df_msd_dreams %>% 
+  left_join(msd_dsnu_xwalk) %>% 
+  left_join(dsnu_list, by=c("operatingunit", "cop22_psnu" = "psnu", "dsnu_new"= "dsnu"))
+
+# FUNCTIONS --------------------------------------------------------------------
 
 #clean number function
 clean_number <- function(x, digits = 0){
@@ -138,13 +173,13 @@ load_secrets()
 
  df_tx <- df_tx %>% 
     filter(fiscal_year == metadata$curr_fy,
-           indicator == "TX_CURR") %>%
+           indicator == "TX_NEW") %>%
     select(fiscal_year, indicator, funding_agency, value) %>% 
     pivot_wider(names_from = funding_agency) %>% 
     mutate(usaid_share = USAID/PEPFAR)  
   
-  tx_val <<- df_tx %>% 
-    mutate(USAID_Lab = USAID %>% clean_number()) %>%
+  tx_new_val <<- df_tx %>% 
+    mutate(USAID_Lab = USAID %>% clean_number(1)) %>%
     pull(USAID_Lab) 
 
 
@@ -305,23 +340,23 @@ hts_lp_val <- grab_lp_results("HTS_TST", "value")
 
 Results through **`r metadata$curr_pd`**
 
-1.  *Currently, USAID provides over **`r tx_val`** people living with HIV with life-saving HIV-treatment. **`r glbl_vls`** of these beneficiaries who received a viral load test are virally suppressed, meaning that they can live longer, healthier lives and the virus can no longer be transmitted.*
+1.  Currently, USAID provides over *7 million* people living with HIV with life-saving HIV-treatment. **`r glbl_vls`** of these beneficiaries who received a viral load test are virally suppressed, meaning that they can live longer, healthier lives and the virus can no longer be transmitted.*
 
-2.  Over the last year, USAID has provided HIV testing services to over **`r hts_val`** people.
+2.  Over the last year, USAID has provided HIV testing services to nearly **`r hts_val`** people.
 
-3.  Over the last year, USAID helped over **`r hts_pos_val`** people learn of their HIV positive status.
+3.  Over the last year, USAID helped nearly **`r hts_pos_val`** people learn of their HIV positive status.
 
 4.  Over the last year, USAID and its partners supported **`r meet_90_vls`** countries to reach over 90 percent viral load suppression among people living with HIV, and of those, **`r meet_95_vls`** countries reached over 95 percent viral load suppression.
 
 5.  *USAID investments strengthen host country systems that drive responsive, resilient, and enduring health care through more than **10,000** HIV testing sites, over **9,000** HIV treatment sites, and over **3,000** sites that provide lab-based or point-of-care testing making critical services accessible in over 50 supported PEPFAR countries.*
 
-6.  *Local partners are on the forefront of the HIV response, supporting **over half of all USAID-supported people living with HIV** with clinical services.*
+6.  *Local partners are on the forefront of the HIV response, supporting **over half of all USAID-supported people living with HIV** with clinical services.* [update?]
 
-7.  *In 2022, local partners helped nearly **`r hts_lp_val`** people learn their HIV status and provided over **`r tx_lp_val`** people with life-saving HIV medication, representing **`r tx_lp_share`** of all USAID-supported people living with HIV.*
+7.  *In 2022, local partners helped over **`r hts_lp_val`** people learn their HIV status and provided over **`r tx_lp_val`** people with life-saving HIV medication, representing **`r tx_lp_share`** of all USAID-supported people living with HIV.* [update?]
 
-8.  *Since 2015, USAID support has enabled nearly **three million infants** to be born HIV-free to mothers living with HIV.*
+8.  *Since 2015, USAID support has enabled nearly **three million infants** to be born HIV-free to mothers living with HIV.* [no longer updating]
 
-9.  *Prevention continues to be one of USAID's fastest growing programs, with nearly **3.3 million pre-exposure prophylaxis (PrEP) initiations** across 42 countries since FY16, over **8.8 voluntary male medical circumcisions (VMMC)** across 13 countries, and over **280M condoms** and **30M personal lubricants** procured for 30 countries in FY23.*
+9.  *Prevention continues to be one of USAID's fastest growing programs, with nearly **3.3 million pre-exposure prophylaxis (PrEP) initiations** across 42 countries since FY16, over **8.8 voluntary male medical circumcisions (VMMC)** across 13 countries, and over **280M condoms** and **30M personal lubricants** procured for 30 countries in FY23.* [need to verify if this excludes NGA]
 
 ## **Achievements related to those who are most disproportionately impacted by HIV**
 
@@ -424,11 +459,65 @@ vmmc_val <- df %>%
   pull(cumulative)
 ```
 
-8.  USAID initiated almost **`r kp_prep_val`** members of key populations (KP) and **`r prep_agyw_val`** adolescent girls and young women (AGYW) on Pre-Exposure Prophylaxis (PrEP) during the last year, expanding effective HIV prevention to key and priority populations. Together KP and AGYW constitute *more than half* of all USAID PrEP initiations, and KP and AGYW PrEP initiations grew quarter over quarter throughout the entire year.
+```{r dreams, , echo=FALSE, include = FALSE} 
 
-9.  This year alone, more than **`r kp_tx_val`** members of key populations in **`r kp_tx_ou`** countries are receiving life-saving HIV medication through USAID support.
+#For total DREAMS programming, use all 4 disaggs + ages 10-29
+viz_package <- df_dreams_all %>%
+  filter(indicator=="AGYW_PREV",
+         standardizeddisaggregate %in% c("Age/Sex/Time/Complete+",
+                                         "Age/Sex/Time/Complete",
+                                         "Age/Sex/Time/Started",
+                                         "Age/Sex/Time/Incomplete"),
+         numeratordenom=="D",
+         age_2019 %in% c("10-14","15-19","20-24","25-29"),
+         sex=="Female")
 
-10. This year USAID and our partners supported almost **`r kp_prev_val`** members of key populations, including sex workers, transgender people, men who have sex with men and people who inject drugs, with HIV prevention services and supportive interventions, which improve their lives and the lives of their children.
+#service type disagg
+viz_service<- df_dreams_all %>% filter(indicator=="AGYW_PREV", 
+                            standardizeddisaggregate %in% c("ComprehensiveEconomicStrengthening",
+                                                            "EducationSupport"),
+                            numeratordenom=="D")
 
-11. In the last year, USAID supported nearly **`r ovc_serv_val`** orphans and vulnerable children (OVC) and their families affected by HIV. Services provided to OVC families included, among others, household economic strengthening, education support, parenting skills building, facilitating access to maternal and child healthcare, and HIV specific testing, care, and treatment.
+#create shares by USAID and non-USAID contributing DSNUs
+dreams_overall_val <- viz_package %>% 
+  mutate(usaid_dsnu = ifelse(str_detect(agencies_FY23, "USAID"), "USAID", "non-USAID")) %>% 
+  group_by(indicator, fiscal_year, usaid_dsnu) %>% 
+  summarize(across(cumulative, \(x) sum(x, na.rm = TRUE)),.groups="drop") %>% 
+  pivot_wider(names_from = "usaid_dsnu", values_from = 'cumulative') %>% 
+  mutate(total = USAID + `non-USAID`,
+         usaid_share = USAID/total) %>% 
+  pull(USAID) %>% 
+  clean_number(1)
 
+## Numbers for education & econ boxes
+## Filter for education and econ disaggs + USAID
+df_serv_type <- viz_service %>%
+  filter(str_detect(agencies_FY23, "USAID")) %>%
+  group_by(standardizeddisaggregate) %>%
+  summarize(across(cumulative, \(x) sum(x, na.rm = TRUE)),.groups="drop") %>%
+  pivot_wider(names_from = "standardizeddisaggregate", values_from = "cumulative") 
+
+dream_econ_val <- df_serv_type %>% 
+  pull(ComprehensiveEconomicStrengthening) %>% 
+  clean_number(1)
+  
+dream_edu_val <- df_serv_type %>% 
+  pull(EducationSupport) %>% 
+  clean_number(1)
+```
+
+10. In the last year, USAID supported nearly **`r ovc_serv_val`** orphans and vulnerable children (OVC) and their families affected by HIV. Services provided to OVC families included, among others, household economic strengthening, education support, parenting skills building, facilitating access to maternal and child healthcare, and HIV specific testing, care, and treatment.
+
+11. Over the last year, USAID contributed to supporting up to **`r dreams_overall_val`** adolescent girls and young women (AGYW) aged 10-29 years, representing 80% of the total number of AGYW supported by PEPFAR, with tailored HIV prevention services such as HIV and violence prevention training, education support to complete secondary school, financial literacy, links to employment, HIV prevention medication (pre-exposure prophylaxis or PrEP) and family planning services.
+
+12. DREAMS programming contributed to providing nearly **`r dream_edu_val`** adolescent girls and young women aged 15-24 years with economic strengthening interventions, which empower participants with technical skills and networks to become entrepreneurs or be linked to employment.
+
+13. In 2023, in districts where USAID is implementing DREAMS, USAID contributed to providing nearly **`r dream_edu_val`** adolescent girls and young women with some form of educational support which could include school and exam fees, uniforms and materials, tutoring, and/or basic literacy.
+
+### PPR
+
+In FY 20232, USAID identified over **`r tx_new_val`** new people living with HIV and maintained over **7 million** people on life-saving HIV treatment. GH investments have strengthened host country systems that drive responsive, resilient, and enduring health care through more than 10,000 HIV testing sites, over 9,000 HIV treatment sites, and over 3,000 sites that provide lab-based or point-of-care testing, making critical services accessible in over 50 countries.
+
+In FY 20232, USAID supported nearly **`r ovc_serv_val`** orphans and vulnerable children and their families affected by HIV through services related to economic strengthening, education, and HIV care, among others.
+
+USAID contributed to supporting up to **2 million** AGYW aged 10-29 years. Additionally, USAID supported over **`r kp_prev_val`** members of key populations (including sex workers, transgender people, men who have sex with men, and people who inject drugs) with HIV prevention services and supportive interventions and more than **`r kp_tx_val`** with life-saving HIV medication.
