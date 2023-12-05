@@ -40,7 +40,7 @@ get_metadata()
   
   df <- si_path() %>% 
     return_latest("OU_IM_FY21") %>% 
-    read_msd()   
+    read_psd()   
 
 
 # MUNGE MMD ---------------------------------------------------------------
