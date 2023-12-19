@@ -63,7 +63,7 @@ ref_id <- "d565f3f7"
            sex == "All",
            indicator %in% c("Number New HIV Infections", "Total deaths to HIV Population")) %>%
     # semi_join(pepfar_country_list, by = c("iso" = "countryname_iso")) %>%
-    select(year, country, indicator, estimate) %>%
+    select(year, country, region, indicator, estimate) %>%
     arrange(country, indicator, year)  
 
   df_epi_pepfar <- df_epi_pepfar %>% 
@@ -72,7 +72,8 @@ ref_id <- "d565f3f7"
            total_deaths = `Total deaths to HIV Population`) %>% 
    # left_join(total_deaths, by = c("year", "country")) %>% 
     group_by(country) %>% 
-    mutate(declining_deaths = total_deaths - lag(total_deaths, order_by = year) <= 0) %>% 
+    mutate(declining_inf = infections - lag(infections, order_by = year) <= 0,
+      declining_deaths = total_deaths - lag(total_deaths, order_by = year) <= 0) %>% 
     ungroup() %>% 
     mutate(infections_below_deaths = infections < total_deaths,
            ratio = infections / total_deaths,
@@ -109,6 +110,25 @@ ref_id <- "d565f3f7"
            max_plot_pt = max(value),
            lab_pt = case_when(year == max(year) ~ value_mod),
            country = factor(country, epi_cntry)) 
+  
+  #calc for countries newly at epi control
+  df_viz_cntry %>% 
+    filter(year %in% c(2021,2022)) %>% 
+    count(year, country, epi_control) %>% 
+    pivot_wider(names_from = "year", values_from = "epi_control") %>% 
+    rename(epicontrol_2021 = `2021`,
+           epicontrol_2022 = `2022`) %>% 
+    mutate(flag_new_epi = ifelse(epicontrol_2021 == FALSE & epicontrol_2022 == TRUE, TRUE, FALSE)) %>% View()
+
+#calc for approaching epi control    
+df_epi_pepfar %>% 
+    mutate(val_lab = case_when(year == max(year) ~ number(value, 1, scale = 1e-3, suffix = "k")),
+           max_plot_pt = max(value),
+           lab_pt = case_when(year == max(year) ~ value_mod)) %>% 
+    filter(year %in% c(2022),
+           str_detect(region, "Africa")) %>% 
+    count(year, country, declining_deaths, infections_below_deaths) %>% View()
+  
     
   
 
@@ -153,7 +173,7 @@ ref_id <- "d565f3f7"
     pull(country)
   
   v_c_high <- df_viz_cntry %>% 
-    filter(country %in% c(high_vol_cntry)) %>% 
+    #filter(country %in% c(high_vol_cntry)) %>% 
     ggplot(aes(year, value_mod, group = indicator, fill = fill_color, color = fill_color)) +
     geom_blank(aes(y = max_plot_pt)) +
     geom_blank(aes(y = -max_plot_pt)) +
