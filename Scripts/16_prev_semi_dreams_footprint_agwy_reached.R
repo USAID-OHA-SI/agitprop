@@ -26,7 +26,7 @@
   library(gt)
   library(patchwork)
   
-  source("Scripts/99_utilities.R")
+  source("Scripts/archive/99_utilities.R")
 
   merdata <- glamr::si_path("path_msd")
   rasdata <- glamr::si_path("path_raster")
@@ -37,20 +37,18 @@
 
 # GLOBAL VARIABLES --------------------------------------------------------
 
-  authors <- c("Aaron Chafetz", "Tim Essam")
+  authors <- c("Karishma Srikanth")
 
 # IMPORT ------------------------------------------------------------------
 
 #MSD
   msd_path <- si_path() %>% 
-    return_latest("PSNU_IM_DREAMS_FY19-22") 
+    return_latest("PSNU_IM_DREAMS_FY21-24") 
   
- df_ou <- read_msd(msd_path) %>% resolve_knownissues()
+ df_ou <- read_psd(msd_path)
 
   #source info
-  msd_source <- source_info(msd_path)
-  curr_fy <- source_info(return = "fiscal_year")
-  curr_pd <- source_info(return = "period")
+ get_metadata(msd_path)
     
 # VIZ ---------------------------------------------------------------------
 
@@ -58,7 +56,7 @@
     df_ou %>% 
     filter(indicator == "AGYW_PREV", 
            standardizeddisaggregate %in% c("Total Numerator", "Total Denominator"), 
-           fiscal_year == curr_fy) %>% 
+           fiscal_year == metadata$curr_fy) %>% 
     group_by(fiscal_year, standardizeddisaggregate) %>% 
     summarise(across(matches("cum"), sum, na.rm = T)) %>% 
     spread(standardizeddisaggregate, cumulative) %>% 
@@ -100,24 +98,24 @@
     df_ou %>% 
     filter(indicator == "AGYW_PREV", 
            standardizeddisaggregate %in% c("Total Numerator", "Total Denominator"), 
-           fiscal_year == 2021) %>% 
+           fiscal_year == metadata$curr_fy) %>% 
     group_by(fiscal_year, standardizeddisaggregate, operatingunit) %>% 
     summarise(across(matches("cum"), sum, na.rm = T)) %>% 
     spread(standardizeddisaggregate, cumulative) %>% 
     mutate(pct_complete = `Total Numerator`/`Total Denominator`,
-           ou_order = fct_reorder(operatingunit, `Total Denominator`)) %>% 
+           ou_order = fct_reorder(operatingunit, `Total Denominator`)) %>% #change to sort by total Num
     arrange(desc(pct_complete))
   
   drms_ban_ou %>% 
     ggplot(aes(y = ou_order)) +
-    geom_col(aes(x = `Total Denominator`), fill = trolley_grey_light) +
-    geom_col(aes(x = `Total Numerator`), fill = scooter, alpha = 0.75) +
-    geom_vline(xintercept = seq(1e5, 8e5, by = 1e5), color = "white") +
-    geom_text(aes(x = `Total Numerator`, label = percent(pct_complete, 1)), size = 9/.pt, family = "Source Sans Pro", color = color_plot_text) +
+    geom_col(aes(x = `Total Denominator`), fill = moody_blue) +
+    #geom_col(aes(x = `Total Numerator`), fill = scooter, alpha = 0.75) +
+    geom_vline(xintercept = seq(1e5, 4e5, by = 1e5), color = "white") +
+    geom_text(aes(x = `Total Denominator`, label = clean_number(`Total Denominator`)), size = 9/.pt, family = "Source Sans Pro", color = color_plot_text) +
     si_style_nolines() +
     scale_x_continuous(labels = unit_format(1, unit = "K", scale = 1e-3),
-                       position = "top", 
-                      breaks = seq(1e5, 8e5, by = 1e5)) +
+                       position = "top",
+                      breaks = seq(1e5, 5e5, by = 1e5)) +
     coord_cartesian(expand = F) +
     labs(x = NULL, y = NULL, title = "")
     
@@ -135,14 +133,14 @@
   
   #ous <- get_outable(datim_user(), datim_pwd())
   ous <- 
-    get_outable(datim_user(), datim_pwd()) %>% 
-    mutate(countryname_iso = if_else(countryname_iso == "SSD", "SDS", countryname_iso))
+    grabr::get_outable(datim_user(), datim_pwd()) %>% 
+    mutate(countryname_iso = if_else(country_iso == "SSD", "SDS", country_iso))
   
   map <- rnaturalearth::ne_countries(continent = "africa", returnclass = "sf") %>% 
     left_join(., ous, by = c("sov_a3" = "countryname_iso")) %>% 
     mutate(pepfar_fill = case_when(
-      sovereignt %in% c("United Republic of Tanzania", "Swaziland") ~ denim,
-      sovereignt %in% ou_dreams_afr ~ denim,
+      sovereignt %in% c("United Republic of Tanzania", "Swaziland") ~ "#2F2E79",
+      sovereignt %in% ou_dreams_afr ~ "#2F2E79",
       TRUE ~ grey20k)
     ) 
   
@@ -153,12 +151,15 @@
   afr_map <- ggplot() +
     # geom_tile(data = filter(terr, value < 210), aes(x = x, y = y, alpha = value)) + 
     # scale_alpha(name = "", range = c(0.6, 0), guide = F) +
-    geom_sf(data = map, aes(fill = pepfar_fill), color = "white", size = 0.1, alpha = 0.8) +
+    geom_sf(data = map, aes(fill = pepfar_fill), color = "white", size = 0.1, alpha = 1) +
+    ggplot2::geom_sf_text(data = map %>% filter(pepfar_fill == "#2F2E79"),
+                          ggplot2::aes(label = geounit), color = "white",
+                          family = "Source Sans Pro Light") +
     scale_fill_identity() +
     si_style_map() +
     labs(x = NULL, y = NULL,
          title = "THE DREAMS (Determined, Resilient, Empowered, AIDS-free, Mentored and Safe) PARNTERSHIP SERVES 15 COUNTRIES",
-         caption = glue("Source: {msd_source}
+         caption = glue("Source: {metadata$course}
                         SI analytics: {paste(authors, collapse = '/')}
                      US Agency for International Development")) 
   
