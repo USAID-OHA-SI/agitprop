@@ -20,6 +20,15 @@
   library(readxl)
   library(googlesheets4)
   
+# FUNCTIONS --------------------------------------------------------------------
+
+#clean number function
+clean_number <- function(x, digits = 0){
+  dplyr::case_when(x >= 1e9 ~ glue("{round(x/1e9, digits)} billion"),
+                   x >= 1e6 ~ glue("{round(x/1e6, digits)} million"),
+                   x >= 1e3 ~ glue("{round(x/1e3, digits)} thousand"),
+                   TRUE ~ glue("{x}"))
+}
 
 # GLOBAL VARIABLES --------------------------------------------------------
   
