@@ -21,13 +21,6 @@ library(janitor)
 library(lubridate)
 library(googlesheets4)
 
-#clean number function
-clean_number <- function(x, digits = 0){
-  dplyr::case_when(x >= 1e9 ~ glue("{round(x/1e9, digits)} billion"),
-                   x >= 1e6 ~ glue("{round(x/1e6, digits)} million"),
-                   x >= 1e3 ~ glue("{round(x/1e3, digits)} thousand"),
-                   TRUE ~ glue("{x}"))
-}
 
 # SI specific paths/functions  
 load_secrets()
@@ -87,10 +80,84 @@ df_final <- df %>%
   rbind(df_msd_TZA)
 
 
+#Functions-----------------------------------------------------------------------
+#clean number function
+clean_number <- function(x, digits = 0){
+  dplyr::case_when(x >= 1e9 ~ glue("{round(x/1e9, digits)} billion"),
+                   x >= 1e6 ~ glue("{round(x/1e6, digits)} million"),
+                   x >= 1e3 ~ glue("{round(x/1e3, digits)} thousand"),
+                   TRUE ~ glue("{x}"))
+}
 
+#local partners function
+#catch-22/Scripts/20211102_Local Partner Meeting/20211022_LP_TX_trends.R
+df_arch <- si_path() %>% 
+  return_latest("OU_IM_FY15-20") %>% 
+  read_msd()
 
+#Read in the google sheet hyperfile with local partner
+sheet_id <- "1MQviknJkJDttGdNEJeNaYPKmHCw6BqPuJ0C5cslV5IE"
+
+df_partner <- read_sheet(sheet_id, sheet = "MechID-PartnerType", range = "A:B") %>% 
+  clean_names() %>% 
+  rename(mech_code = mechanism_id) %>% 
+  mutate(mech_code = as.character(mech_code),
+         partner_type = case_when(partner_type == "Regional" ~ "Local",
+                                  partner_type == "TBD Local" ~ "Local", TRUE ~ partner_type)) 
+#source info
+#curr_pd <- identifypd(df_final)
+#curr_fy <- identifypd(df_final, "year")
+#msd_source <- source_info()
+
+#result_type = value or share
+grab_lp_results <- function(indic, result_type) {
+  
+  df_munge <- suppressMessages(df_final %>% 
+                                 # bind_rows(df_arch) %>%
+                                 left_join(df_partner, by = c("mech_code")) %>%
+                                 filter(funding_agency == "USAID",
+                                        indicator == indic,
+                                        standardizeddisaggregate == "Total Numerator") %>% 
+                                 group_by(funding_agency, fiscal_year, indicator, partner_type) %>% 
+                                 summarise(across(cumulative, sum, na.rm = TRUE)) %>%
+                                 ungroup() %>% 
+                                 filter(partner_type != "TBD") %>%
+                                 #filter(fiscal_year != 2022) %>%
+                                 pivot_wider(names_from = partner_type, values_from = cumulative) %>%
+                                 group_by(fiscal_year) %>%
+                                 mutate(Total = International + Local,
+                                        share = Local / Total)  %>%
+                                 pivot_longer(cols = International:Total, names_to = "partner_type"))
+  
+  title_info_lp <- df_munge %>% 
+    filter(partner_type == "Local", fiscal_year == metadata$curr_fy) %>% 
+    select(fiscal_year, indicator, value, share) %>% 
+    mutate(
+      value = value, #change to 1 if you want 1 decimal accuracy
+      share = percent(round(share, 2))) %>% 
+    pull(result_type)
+  
+  return(title_info_lp)
+}
+
+#key pops function
+pull_kp <- function(indic) {
+  kp_val <- df_final %>%
+    filter(funding_agency == "USAID",
+           str_detect(standardizeddisaggregate, "KeyPop(?!\\/Status)"),
+           indicator %in% c("PrEP_NEW", "TX_CURR", "KP_PREV"),
+           fiscal_year == metadata$curr_fy) %>%
+    count(indicator, wt = cumulative) %>%
+    mutate(n = clean_number(n, 1)) %>% 
+    pivot_wider(names_from = indicator, values_from = "n") %>% 
+    pull(indic)
+  
+  return(kp_val)
+}
 
 #MUNGE
+
+#Epi Control--------------------------------------------------------------------
 df_vls_global <- df_final %>% 
   clean_indicator() %>% 
   clean_agency() %>% 
@@ -147,7 +214,125 @@ meet_95_vls <<- df_tx_ou %>% #TP.2
   filter(fiscal_year == metadata$curr_fy, VLS >= .95) %>%
   distinct(country) %>% nrow()
 
+#Prevention---------------------------------------------------------------------
 
+#Prep
+prep_val <- df_final %>% #TP.7
+  filter(funding_agency == "USAID",
+         standardizeddisaggregate %in% c("Total Numerator"),
+         indicator %in% c("PrEP_NEW"),
+         fiscal_year == metadata$curr_fy) %>%
+  count(indicator, wt = cumulative)
+
+prep_val_country <- df_final %>% #TP.7
+  filter(funding_agency == "USAID",
+         standardizeddisaggregate %in% c("Total Numerator"),
+         indicator %in% c("PrEP_NEW"),
+         fiscal_year == metadata$curr_fy) %>%
+  distinct(country) %>% nrow()
+
+prep_achv <- df_final %>% #TP.7
+  filter(funding_agency == "USAID",
+         standardizeddisaggregate %in% c("Total Numerator"),
+         indicator %in% c("PrEP_NEW"),
+         fiscal_year == metadata$curr_fy) %>%
+  summarise(percent_achv = (sum(cumulative, na.rm = TRUE) / sum(targets, na.rm = TRUE))*100
+            )
+
+lp_prep_val <- grab_lp_results("PrEP_NEW", "value") #TP.8
+lp_prep_share <- grab_lp_results("PrEP_NEW", "share") #TP.8
+
+#kp prep
+kp_prep_val <- pull_kp("PrEP_NEW") #TP.10
+
+#AGYW prep
+prep_agyw_val <- df_final %>% #TP.10
+  filter(funding_agency == "USAID",
+         standardizeddisaggregate %in% c("Age/Sex"),
+         indicator %in% c("PrEP_NEW"),
+         fiscal_year == metadata$curr_fy,
+         sex == "Female",
+         age_2019 %in% c("10-14","15-19", "20-24","25-29")
+  ) %>%
+  count(indicator, wt = cumulative) 
+
+#vmmc
+vmmc_val <- df_final %>% #TP.11
+  filter(indicator == "VMMC_CIRC",
+         standardizeddisaggregate == "Total Numerator",
+         funding_agency == "USAID",
+         fiscal_year == metadata$curr_fy) %>% 
+  group_by(fiscal_year, funding_agency) %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
+  ungroup() %>% 
+  pull(cumulative)
+
+vmmc_val_cntry <- df_final %>% #TP.11
+  filter(indicator == "VMMC_CIRC",
+         standardizeddisaggregate == "Total Numerator",
+         funding_agency == "USAID",
+         fiscal_year == metadata$curr_fy) %>% 
+  group_by(fiscal_year, funding_agency) %>% 
+  ungroup() %>% 
+  distinct(country) %>% nrow()
+
+vmmc_achv <- df_final %>% #TP.11
+  filter(funding_agency == "USAID",
+         standardizeddisaggregate == "Total Numerator",
+         indicator %in% c("VMMC_CIRC"),
+         fiscal_year == metadata$curr_fy) %>%
+  summarise(percent_achv = (sum(cumulative, na.rm = TRUE) / sum(targets, na.rm = TRUE))*100
+  )
+
+agyw_prev_val <- df_final %>% #TP.11
+  filter(indicator == "AGYW_PREV",
+         standardizeddisaggregate %in% c("Total Numerator"),
+         fiscal_year == metadata$curr_fy) %>% 
+  summarise(sum(cumulative, na.rm = TRUE)
+  )
+
+agyw_prev_econ_val <- df_final %>% #TP.13
+  filter(indicator=="AGYW_PREV", 
+           standardizeddisaggregate %in% c("ComprehensiveEconomicStrengthening"),
+           numeratordenom=="D",
+           fiscal_year == metadata$curr_fy) %>% 
+  summarise(sum(cumulative, na.rm = TRUE)
+  )
+
+#ovc
+ovc_serv_val <- df_final %>% #TP.14
+  filter(indicator %in% c("OVC_SERV"),
+         standardizeddisaggregate %in% c("Total Numerator"),
+         #  trendscoarse == "<18",
+         fiscal_year == metadata$curr_fy,
+         funding_agency == "USAID") %>% 
+  group_by(fiscal_year, funding_agency) %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
+  ungroup() %>% 
+  mutate(cumulative = clean_number(cumulative, 2)) %>% 
+  pull(cumulative)
+
+ovc_serv_child_adolesc_val <- df_final %>% #TP.14
+  filter(indicator %in% c("OVC_SERV"),
+         standardizeddisaggregate %in% c("Age/Sex/ProgramStatus", "Age/Sex/Preventive", "Age/Sex/DREAMS"),
+         trendscoarse == "<18",
+         fiscal_year == metadata$curr_fy,
+         funding_agency == "USAID") %>% 
+  group_by(fiscal_year, funding_agency) %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
+  ungroup() %>% 
+  pull(cumulative)
+
+ovc_serv_cntry <- df_final %>% #TP.14
+  filter(indicator %in% c("OVC_SERV"),
+         standardizeddisaggregate %in% c("Age/Sex/ProgramStatus", "Age/Sex/Preventive", "Age/Sex/DREAMS"),
+         #trendscoarse == "<18",
+         fiscal_year == metadata$curr_fy,
+         funding_agency == "USAID") %>% 
+  group_by(country, fiscal_year, funding_agency) %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
+  ungroup() %>%
+  distinct(country) %>% nrow()
 
 #hts clean num
 munge_hts_clean <- function(indic) {
@@ -213,13 +398,13 @@ munge_hts <- function(indic) {
   
   return(hts_val)
 }
-hts_val_clean <- munge_hts_clean("HTS_TST") #Testing and Diagnosis TP.17
-hts_pos_val_clean <- munge_hts_clean("HTS_TST_POS") #Testing and Diagnosis TP.17
-hts_self_val_clean <- munge_hts_clean("HTS_SELF")
+hts_val_clean <- munge_hts_clean("HTS_TST") #Testing and Diagnosis TP.18
+hts_pos_val_clean <- munge_hts_clean("HTS_TST_POS") #Testing and Diagnosis TP.18
+hts_self_val_clean <- munge_hts_clean("HTS_SELF") #Testing and Diagnosis TP.19
 
-hts_val <- munge_hts("HTS_TST") #Testing and Diagnosis TP.17
-hts_pos_val <- munge_hts("HTS_TST_POS") #Testing and Diagnosis TP.17
-hts_self_val <- munge_hts("HTS_SELF") #Testing and Diagnosis TP.18
+hts_val <- munge_hts("HTS_TST") #Testing and Diagnosis TP.18
+hts_pos_val <- munge_hts("HTS_TST_POS") #Testing and Diagnosis TP.18
+hts_self_val <- munge_hts("HTS_SELF") #Testing and Diagnosis TP.19
 
 #youth testing 
 df_create_youth <- df_final %>%
@@ -264,13 +449,24 @@ munge_hts_youth <- function(indic) {
 hts_val_youth <- munge_hts_youth("HTS_TST") #Testing and diagnosis TP.20
 hts_pos_val_youth <- munge_hts_youth("HTS_TST_POS") #Testing and diagnosis TP.20
 
-#Prep
-prep_val <- df_final %>% #TP.7
+
+hts_youth_achv <- df_youth %>% 
   filter(funding_agency == "USAID",
-         standardizeddisaggregate %in% c("Total Numerator"),
-         indicator %in% c("PrEP_NEW"),
+         standardizeddisaggregate %in% c("Modality/Age/Sex/Result"),
+         indicator %in% c("HTS_TST"),
          fiscal_year == metadata$curr_fy) %>%
-  count(indicator, wt = cumulative)
+  summarise(percent_achv = (sum(cumulative, na.rm = TRUE) / sum(targets, na.rm = TRUE))*100
+  )
+
+hts_youth_pos_achv <- df_youth %>% 
+  filter(funding_agency == "USAID",
+         standardizeddisaggregate %in% c("Modality/Age/Sex/Result"),
+         indicator %in% c("HTS_TST_POS"),
+         fiscal_year == metadata$curr_fy) %>%
+  summarise(percent_achv = (sum(cumulative, na.rm = TRUE) / sum(targets, na.rm = TRUE))*100
+  )
+
+hts_lp_value <- grab_lp_results("HTS_TST", "value")
 
 #do we need this for Top TPS? 
 #create a PEPFAR duplicate and aggregate up to country/global level
@@ -297,62 +493,20 @@ tx_val <<- df_tx %>%
   mutate(USAID_Lab = USAID %>% clean_number()) %>%
   pull(USAID_Lab) 
 
-#local partners 
-#catch-22/Scripts/20211102_Local Partner Meeting/20211022_LP_TX_trends.R
-df_arch <- si_path() %>% 
-  return_latest("OU_IM_FY15-20") %>% 
-  read_msd()
-
-#Read in the google sheet hyperfile with local partner
-sheet_id <- "1MQviknJkJDttGdNEJeNaYPKmHCw6BqPuJ0C5cslV5IE"
-
-df_partner <- read_sheet(sheet_id, sheet = "MechID-PartnerType", range = "A:B") %>% 
-  clean_names() %>% 
-  rename(mech_code = mechanism_id) %>% 
-  mutate(mech_code = as.character(mech_code),
-         partner_type = case_when(partner_type == "Regional" ~ "Local",
-                                  partner_type == "TBD Local" ~ "Local", TRUE ~ partner_type)) 
-#source info
-curr_pd <- identifypd(df_final)
-curr_fy <- identifypd(df_final, "year")
-msd_source <- source_info()
-
-#result_type = value or share
-grab_lp_results <- function(indic, result_type) {
-  
-  df_munge <- suppressMessages(df_final %>% 
-                                 # bind_rows(df_arch) %>%
-                                 left_join(df_partner, by = c("mech_code")) %>%
-                                 filter(funding_agency == "USAID",
-                                        indicator == indic,
-                                        standardizeddisaggregate == "Total Numerator") %>% 
-                                 group_by(funding_agency, fiscal_year, indicator, partner_type) %>% 
-                                 summarise(across(cumulative, sum, na.rm = TRUE)) %>%
-                                 ungroup() %>% 
-                                 filter(partner_type != "TBD") %>%
-                                 #filter(fiscal_year != 2022) %>%
-                                 pivot_wider(names_from = partner_type, values_from = cumulative) %>%
-                                 group_by(fiscal_year) %>%
-                                 mutate(Total = International + Local,
-                                        share = Local / Total)  %>%
-                                 pivot_longer(cols = International:Total, names_to = "partner_type"))
-  
-  title_info_lp <- df_munge %>% 
-    filter(partner_type == "Local", fiscal_year == metadata$curr_fy) %>% 
-    select(fiscal_year, indicator, value, share) %>% 
-    mutate(
-      value = value, #change to 1 if you want 1 decimal accuracy
-      share = percent(round(share, 2))) %>% 
-    pull(result_type)
-  
-  return(title_info_lp)
-}
 
 tx_lp_val <- grab_lp_results("TX_CURR", "value")
 tx_lp_share <- grab_lp_results("TX_CURR", "share")
 hts_lp_val <- grab_lp_results("HTS_TST", "value") #Testing and Diagnosis TP.21
 
 #ovc - compare to ovc below? 
+
+df_ovc_test <- df_final %>% 
+  filter(funding_agency == "USAID",
+         indicator %in% c("OVC_SERV"),
+         standardizeddisaggregate %in% c("Age/Sex/ProgramStatus", "Age/Sex/DREAMS", "Age/Sex/Preventive"),
+         #trendscoarse == "<18",
+         fiscal_year <= metadata$curr_fy) %>% 
+  summarise(cumulative = sum(cumulative, na.rm = TRUE))
 
 df_ovc <- df_final %>% 
   clean_countries(colname = "country") %>% 
@@ -383,26 +537,8 @@ ovc_serv_country <<- df_ovc %>% #add country into grouping above to get number
 
 ## **Achievements related to those who are most disproportionately impacted by HIV**
 
-pull_kp <- function(indic) {
-  kp_val <- df_final %>%
-    filter(funding_agency == "USAID",
-           str_detect(standardizeddisaggregate, "KeyPop(?!\\/Status)"),
-           indicator %in% c("PrEP_NEW", "TX_CURR", "KP_PREV"),
-           fiscal_year == metadata$curr_fy) %>%
-    count(indicator, wt = cumulative) %>%
-    mutate(n = clean_number(n, 1)) %>% 
-    pivot_wider(names_from = indicator, values_from = "n") %>% 
-    pull(indic)
-  
-  return(kp_val)
-}
-
 kp_prev_val <- pull_kp("KP_PREV") #TP.28
 kp_tx_val <- pull_kp("TX_CURR")
-kp_prep_val <- pull_kp("PrEP_NEW") #TP.10
-
-lp_prep_val <- grab_lp_results("PrEP_NEW", "value") #TP.8
-lp_prep_share <- grab_lp_results("PrEP_NEW", "share") #TP.8
 
 kp_tx_ou <- df_final %>%
   filter(funding_agency == "USAID",
@@ -417,41 +553,9 @@ kp_tx_ou <- df_final %>%
   nrow() 
 
 
-#AGYW prep
-prep_agyw_val <- df_final %>% #TP.10
-  filter(funding_agency == "USAID",
-         standardizeddisaggregate %in% c("Age/Sex"),
-         indicator %in% c("PrEP_NEW"),
-         fiscal_year == metadata$curr_fy,
-         sex == "Female",
-         age_2019 %in% c("15-19", "20-24")
-  ) %>%
-  count(indicator, wt = cumulative) %>%
-  mutate(n = clean_number(n))
 
-#ovc
-ovc_serv_val <- df_final %>% #TP.15
-  filter(indicator %in% c("OVC_SERV"),
-         standardizeddisaggregate %in% c("Total Numerator"),
-         #  trendscoarse == "<18",
-         fiscal_year == metadata$curr_fy,
-         funding_agency == "USAID") %>% 
-  group_by(fiscal_year, funding_agency) %>% 
-  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
-  ungroup() %>% 
-  mutate(cumulative = clean_number(cumulative, 2)) %>% 
-  pull(cumulative)
 
-ovc_serv_child_adolesc_val <- df_final %>% #TP.15
-  filter(indicator %in% c("OVC_SERV"),
-         standardizeddisaggregate %in% c("Age/Sex/ProgramStatus", "Age/Sex/Preventive", "Age/Sex/DREAMS"),
-         trendscoarse == "<18",
-         fiscal_year == metadata$curr_fy,
-         funding_agency == "USAID") %>% 
-  group_by(fiscal_year, funding_agency) %>% 
-  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
-  ungroup() %>% 
-  pull(cumulative)
+
 
 
 
@@ -472,15 +576,39 @@ gbv_val <- df_final %>% #TP.32
 #local partner - GBV
 gbv_lp_pct <- grab_lp_results("GEND_GBV", "share") #TP.32
 
-vmmc_val <- df_final %>% 
-  filter(indicator == "VMMC_CIRC",
-         standardizeddisaggregate == "Total Numerator",
-         funding_agency == "USAID",
-         fiscal_year == metadata$curr_fy) %>% 
-  group_by(fiscal_year, funding_agency) %>% 
-  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
-  ungroup() %>% 
-  pull(cumulative)
+#Dreams-------------------------------------------------------------------
+# DREAMS DATA PREP --------------------------------------------------------------
+
+# Google sheet ID for DREAMS DSNU list
+dsnu_g_id <- "1YaGWvpkiXVPiAwA3KyHwFtbZHrVeCz6DijWPCKpUN-Q"
+
+#MSD path
+dsnu_msd_path <- si_path() %>% 
+  return_latest("PSNU_IM_DREAMS_FY21-24")
+
+#import DREAMS DSNU crosswalk
+#recommend adding psnu_uids to this sheet
+dsnu_list <- read_sheet(dsnu_g_id, sheet = "CURRENT (FY23/COP22)")
+
+#rename names
+names(dsnu_list)<-c("operatingunit", "psnu", "dsnu", "agencies_FY23")
+
+#import msd and filter to current year
+df_msd_dreams <- read_psd(dsnu_msd_path) %>% 
+  filter(fiscal_year == metadata$curr_fy)
+
+msd_dsnu_xwalk <- df_msd_dreams %>% 
+  count(operatingunit, operatingunituid, psnu, psnuuid, cop22_psnu, cop22_psnuuid, dsnu, dsnuuid) %>% 
+  mutate(raised_lvl = ifelse(psnuuid != cop22_psnuuid, TRUE, FALSE)) %>% 
+  mutate(dsnu_new = case_when(operatingunit != "Uganda" & raised_lvl == TRUE ~ cop22_psnu,
+                              TRUE ~ dsnu),
+         dsnuuid_new = case_when(operatingunit != "Uganda" & raised_lvl == TRUE ~ cop22_psnuuid,
+                                 TRUE ~ dsnuuid))
+
+#join the new xwalk back to msd and then join the internal dsnu list to the msd
+df_dreams_all <- df_msd_dreams %>% 
+  left_join(msd_dsnu_xwalk) %>% 
+  left_join(dsnu_list, by=c("operatingunit", "cop22_psnu" = "psnu", "dsnu_new"= "dsnu"))
 
 #For total DREAMS programming, use all 4 disaggs + ages 10-29
 viz_package <- df_dreams_all %>%
@@ -500,7 +628,7 @@ viz_service<- df_dreams_all %>% filter(indicator=="AGYW_PREV",
                                        numeratordenom=="D")
 
 #create shares by USAID and non-USAID contributing DSNUs
-dreams_overall_val <- viz_package %>% 
+dreams_overall_val <- viz_package %>% #TP.12
   mutate(usaid_dsnu = ifelse(str_detect(agencies_FY23, "USAID"), "USAID", "non-USAID")) %>% 
   group_by(indicator, fiscal_year, usaid_dsnu) %>% 
   summarize(across(cumulative, \(x) sum(x, na.rm = TRUE)),.groups="drop") %>% 
@@ -512,7 +640,7 @@ dreams_overall_val <- viz_package %>%
 
 ## Numbers for education & econ boxes
 ## Filter for education and econ disaggs + USAID
-df_serv_type <- viz_service %>%
+df_serv_type <- viz_service %>% #TP.13
   filter(str_detect(agencies_FY23, "USAID")) %>%
   group_by(standardizeddisaggregate) %>%
   summarize(across(cumulative, \(x) sum(x, na.rm = TRUE)),.groups="drop") %>%
