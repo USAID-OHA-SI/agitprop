@@ -34,27 +34,7 @@ Previously used for: Data for World AIDS Day 2022, 2022 OHA Top Talking Points, 
 
 Audience: The public, Agency stakeholders, partners, HIV/AIDS stakeholders/activists, the development community
 
-Purpose: The purpose of this document is to create one place for the data points we will be sharing on World AIDS Day. On World AIDS Day we will be sharing (not a complete list): 
-
--   an Agency notice, 
-
--   an Agency-wide social media toolkit (and a USAID GH specific toolkit), 
-
--   a press statement from A/AID,
-
--   and we will be updating our OHA webpage on World AIDS Day [last year\'s version here](https://www.usaid.gov/world-aids-day).
-
-These points will be repeated throughout these deliverables and language may vary slightly from what is included below. The USG World AIDS Day theme is \"World AIDS Day 35 - Remember and Commit\" (WAD 35 means 35 years of World AIDS Day). The UNAIDS theme is \"[Let Communities Lead\"](https://www.unaids.org/en/2023-world-aids-day#:~:text=Let%20Communities%20Lead%20%2D%20World%20AIDS,progress%20in%20the%20HIV%20response.)
-
-Our plan is to share the Agency social media toolkit by Nov 23.
-
-The clearance timeline is:
-
--   Division chiefs to clear by COB Tuesday Nov 14th
--   Front Office to clear by COB Friday November 17th
--   Nov 21st - SIEI & comms to address any outstanding issues/comments from clearance process
--   Nov 24nd - SIEI to plug in numbers for Q4
--   Nov 28rd - Social Media tool kit is released
+Purpose: The purpose of this document is to create one place for the data points that can be shared by OHA leadership at events, in presentations, etc. 
 
 ```{r, include=FALSE, echo=FALSE}
 options(scipen=999)
