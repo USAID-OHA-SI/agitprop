@@ -56,6 +56,10 @@ The clearance timeline is:
 -   Nov 24nd - SIEI to plug in numbers for Q4
 -   Nov 28rd - Social Media tool kit is released
 
+```{r, include=FALSE, echo=FALSE}
+options(scipen=999)
+```
+
 ```{r data, include=FALSE, echo=FALSE}
 #Current MSD
 filepath <- si_path() %>% 
@@ -165,7 +169,7 @@ clean_number <- function(x, digits = 0){
 
 #LP Function
 #result_type = value or share
-grab_lp_results <- function(indic, result_type) {
+grab_lp_results_clean <- function(indic, result_type) {
   
   df_munge <- suppressMessages(df_final %>% 
                                  # bind_rows(df_arch) %>%
@@ -195,6 +199,37 @@ grab_lp_results <- function(indic, result_type) {
   return(title_info_lp)
 }
 
+grab_lp_results <- function(indic, result_type) {
+  
+  df_munge <- suppressMessages(df_final %>% 
+                                 # bind_rows(df_arch) %>%
+                                 left_join(df_partner, by = c("mech_code")) %>%
+                                 filter(funding_agency == "USAID",
+                                        indicator == indic,
+                                        standardizeddisaggregate == "Total Numerator") %>% 
+                                 group_by(funding_agency, fiscal_year, indicator, partner_type) %>% 
+                                 summarise(across(cumulative, sum, na.rm = TRUE)) %>%
+                                 ungroup() %>% 
+                                 filter(partner_type != "TBD") %>%
+                                 #filter(fiscal_year != 2022) %>%
+                                 pivot_wider(names_from = partner_type, values_from = cumulative) %>%
+                                 group_by(fiscal_year) %>%
+                                 mutate(Total = International + Local,
+                                        share = Local / Total)  %>%
+                                 pivot_longer(cols = International:Total, names_to = "partner_type"))
+  
+  title_info_lp <- df_munge %>% 
+    filter(partner_type == "Local", fiscal_year == metadata$curr_fy) %>% 
+    select(fiscal_year, indicator, value, share) %>% 
+    mutate(
+      value = value,#change to 1 if you want 1 decimal accuracy
+      share = percent(round(share, 2))) %>% 
+    pull(result_type) %>%
+  
+  return(title_info_lp)
+}
+
+
 #key pops function clean
 pull_kp_clean <- function(indic) {
   kp_val <- df_final %>%
@@ -219,7 +254,7 @@ pull_kp <- function(indic) {
            fiscal_year == metadata$curr_fy) %>%
     count(indicator, wt = cumulative) %>%
     pivot_wider(names_from = indicator, values_from = "n") %>% 
-    pull(indic)
+    pull(indic) 
   
   return(kp_val)
 }
@@ -356,7 +391,11 @@ prep_val <- df_final %>%
          standardizeddisaggregate %in% c("Total Numerator"),
          indicator %in% c("PrEP_NEW"),
          fiscal_year == metadata$curr_fy) %>%
-  count(indicator, wt = cumulative)
+ group_by(fiscal_year, funding_agency) %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
+  ungroup() %>% 
+  mutate(cumulative = clean_number(cumulative, 2)) %>% 
+  pull(cumulative)
 
 prep_val_country <- df_final %>% 
   filter(funding_agency == "USAID",
@@ -371,7 +410,8 @@ prep_achv <- df_final %>%
          indicator %in% c("PrEP_NEW"),
          fiscal_year == metadata$curr_fy) %>%
   summarise(percent_achv = (sum(cumulative, na.rm = TRUE) / sum(targets, na.rm = TRUE))*100
-            )
+            ) %>%
+  round(0)
 
 lp_prep_val <- grab_lp_results("PrEP_NEW", "value") 
 lp_prep_share <- grab_lp_results("PrEP_NEW", "share")
@@ -389,7 +429,10 @@ prep_agyw_val <- df_final %>%
          sex == "Female",
          age_2019 %in% c("10-14","15-19", "20-24")
   ) %>%
-  count(indicator, wt = cumulative) 
+  group_by(fiscal_year, funding_agency) %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
+  ungroup() %>% 
+  pull(cumulative)
 
 prep_agyw_val_clean <- df_final %>%
   filter(funding_agency == "USAID",
@@ -415,7 +458,7 @@ vmmc_val <- df_final %>%
   group_by(fiscal_year, funding_agency) %>% 
   summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
   ungroup() %>% 
-  pull(cumulative)
+  pull(cumulative) 
 
 vmmc_val_cntry <- df_final %>% 
   filter(indicator == "VMMC_CIRC",
@@ -432,7 +475,8 @@ vmmc_achv <- df_final %>%
          indicator %in% c("VMMC_CIRC"),
          fiscal_year == metadata$curr_fy) %>%
   summarise(percent_achv = (sum(cumulative, na.rm = TRUE) / sum(targets, na.rm = TRUE))*100
-  )
+  ) %>%
+  round(1)
 ```
 
 ```{r prevention_dreams, echo=FALSE, include = FALSE}
@@ -545,8 +589,7 @@ munge_hts <- function(indic) {
     select(fiscal_year, value, share) %>% 
     mutate(share = percent(round(share, 2)),
            value = round(value, 2)) %>% 
-    pull(value)
-  
+    pull(value) 
   
   return(hts_val)
 }
@@ -593,14 +636,14 @@ munge_hts_youth <- function(indic) {
            funding_agency == "USAID") %>% 
     select(fiscal_year, value, share) %>% 
     mutate(share = percent(round(share, 2))) %>% 
-    pull(value)
+    pull(value) %>% 
   
   
   return(hts_val)
 }
 
-hts_val_youth <- munge_hts_youth("HTS_TST") #Testing and diagnosis TP.20
-hts_pos_val_youth <- munge_hts_youth("HTS_TST_POS") #Testing and diagnosis TP.20
+hts_val_youth <- munge_hts_youth("HTS_TST") 
+hts_pos_val_youth <- munge_hts_youth("HTS_TST_POS") 
 
 
 hts_youth_achv <- df_youth %>% 
@@ -609,7 +652,8 @@ hts_youth_achv <- df_youth %>%
          indicator %in% c("HTS_TST"),
          fiscal_year == metadata$curr_fy) %>%
   summarise(percent_achv = (sum(cumulative, na.rm = TRUE) / sum(targets, na.rm = TRUE))*100
-  )
+  ) %>%
+  round(0)
 
 hts_youth_pos_achv <- df_youth %>% 
   filter(funding_agency == "USAID",
@@ -617,8 +661,10 @@ hts_youth_pos_achv <- df_youth %>%
          indicator %in% c("HTS_TST_POS"),
          fiscal_year == metadata$curr_fy) %>%
   summarise(percent_achv = (sum(cumulative, na.rm = TRUE) / sum(targets, na.rm = TRUE))*100
-  )
+  ) %>%
+  round(0)
 
+hts_lp_value_clean <- grab_lp_results_clean("HTS_TST", "value")
 hts_lp_value <- grab_lp_results("HTS_TST", "value")
 ```
 
@@ -694,7 +740,7 @@ gbv_val <- df_final %>%
     group_by(fiscal_year, funding_agency) %>% 
     summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
         ungroup() %>% 
-  pull(cumulative)
+  pull(cumulative) 
 
 #local partner - GBV
 gbv_lp_pct <- grab_lp_results("GEND_GBV", "share")
@@ -732,7 +778,7 @@ tb_tst <- df_final %>%
     group_by(fiscal_year, funding_agency) %>% 
     summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
         ungroup() %>% 
-  pull(cumulative)
+  pull(cumulative) 
 
 tb_tst_denom_clean <- df_final %>% 
   filter(indicator == "TB_STAT",
@@ -766,7 +812,7 @@ tb_stat_pos <- df_final %>%
     group_by(fiscal_year, funding_agency) %>% 
     summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
         ungroup() %>% 
-  pull(cumulative)
+  pull(cumulative) 
 
 tb_stat_pos_clean <- df_final %>% 
   filter(indicator == "TB_STAT_POS",
@@ -806,7 +852,7 @@ tb_art_share_val <- sum((tb_art_val/tb_stat_pos)*100) %>%
 
 1.  In 2003, only **50,000 people** in Africa were on life-saving HIV treatment, even though an estimated **18.9 million** were infected with HIV in Sub-Saharan Africa alone. Today, PEPFAR provides more than **20 million** people with life-saving HIV treatment and has saved more than **25 million** lives.
 
-2. Through PEPFAR, USAID provides more than **seven million** clients with life-saving HIV-treatment. In 2023, **`r glbl_vls`** of the people living with HIV, who received a viral load test were virally suppressed, meaning that they can live longer, healthier lives and the virus can no longer be transmitted. This result is driven by **`r meet_95_vls`** countries reaching more than 95% viral load suppression and **`r `meet_90_vls`** countries reaching more than 90% viral load suppression.
+2. Through PEPFAR, USAID provides more than **seven million** clients with life-saving HIV-treatment. In 2023, **`r glbl_vls`** of the people living with HIV, who received a viral load test were virally suppressed, meaning that they can live longer, healthier lives and the virus can no longer be transmitted. This result is driven by **`r meet_95_vls`** countries reaching more than 95% viral load suppression and **`r meet_90_vls`** countries reaching more than 90% viral load suppression.
 
 3. USAID investments strengthen host country systems that drive responsive, resilient, and enduring health care through more than **10,000** HIV testing sites, more than 9,000 HIV treatment sites, and more than **3,000** sites that provide lab-based or point-of-care testing, making critical services accessible in more than **50** countries.
 
@@ -846,7 +892,7 @@ tb_art_share_val <- sum((tb_art_val/tb_stat_pos)*100) %>%
 
 19. USAID uses a variety of approaches to reach adolescents and young adults with testing for treatment and prevention. Countries such as Kenya and Lesotho have sites with accessible hours to reach adolescents before and after school and staff trained to provide youth friendly services. In Central America, USAID is using cyber educators to reach young KP for testing through both community and facility modalities.
 
-20. In 2023, local partners conducted almost **21.1 million** [**`r hts_lp_value`**] HIV tests, to help people learn their HIV status. 
+20. In 2023, local partners conducted almost **`r hts_lp_value_clean`** [**`r hts_lp_value`**] HIV tests, to help people learn their HIV status. 
 
 **Treatment & Viral Suppression (second & third 95)**
 
@@ -872,7 +918,7 @@ tb_art_share_val <- sum((tb_art_val/tb_stat_pos)*100) %>%
 
 31. In 2023, USAID helped `r tb_share_val`% (more than **`r tb_tst_clean`** [**`r tb_tst`**]) of people with TB in 14 countries learn their HIV status. For those TB patients co-infected with HIV (more than `r tb_stat_pos`), USAID helped `r tb_art_share_val`% (or `r tb_art_val`) of them receive life-saving HIV medication through USAID PEPFAR-supported programs.
 
-32. USAID provides integrated gender-based violence clinical services in `r gbv_cntry_val` countries. In 2023, nearly **`r gbv_val_clean`** [**`r gbv_val`**] survivors received post-violence clinical care services through USAID, with local partners delivering the majority of care (**`rgbv_lp_pct`**). From 2000 to 2023, USAID has trained more than 1,200 individuals from 30 countries on first-line support using the World Health Organization’s LIVES approach. 
+32. USAID provides integrated gender-based violence clinical services in `r gbv_cntry_val` countries. In 2023, nearly **`r gbv_val_clean`** [**`r gbv_val`**] survivors received post-violence clinical care services through USAID, with local partners delivering the majority of care (**`r gbv_lp_pct`**). From 2000 to 2023, USAID has trained more than 1,200 individuals from 30 countries on first-line support using the World Health Organization’s LIVES approach. 
 
 33. USAID is working to integrate and expand the use of social and behavioral interventions and approaches to amplify HIV treatment and prevention outcomes to align with the renewed focus on behavioral science in PEPFAR’s updated strategy. In 2023, OHA organized several learning events to reach the field-based HIV Social and Behavior Change (SBC) community in some 40 USAID Missions to showcase the power of human-centered design, the case for strategic marketing, nudging our HIV programs to epidemic control and digital tools for SBC..OHA also developed and launched a USAID SBC Primer for HIV Programs. Featuring a wide range of formats such as podcasts, voice over presentations and slide decks, the SBC Primer is meant to serve as a resource for USAID staff to learn about key principles and promising and proven programs as well as access tools and emerging evidence. 
 
