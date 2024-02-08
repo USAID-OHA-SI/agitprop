@@ -73,17 +73,16 @@ df <- df_msd %>%
   select(-c(qtr1:qtr4)) %>% 
   rbind(df_nga_new)
 
-#initial MSD 
-df_initial <- si_path() %>%
-  return_latest("MER_Structured_Datasets_OU_IM_FY21-24_20231114_v1_1") %>%
+#Q4 TZA Daily Genie 
+df_TZA <- si_path() %>%
+  return_latest("Genie-OUByIMs-Tanzania-Daily-2024-02-07") %>%
   read_psd()
 
-#exclude extra columns and filter initial dataset to Tanzania
-df_msd_TZA <- df_initial %>% 
-  select(-c(qtr1:qtr4)) %>% 
-  filter(operatingunit == "Tanzania")
+#exclude extra columns 
+df_msd_TZA <- df_TZA %>% 
+  select(-c(qtr1:qtr4)) 
 
-#bind initial TZA data to clean MSD w/ NGA file
+#bind TZA data to clean MSD w/ NGA file
 df_final <- df %>% 
   rbind(df_msd_TZA)
 
