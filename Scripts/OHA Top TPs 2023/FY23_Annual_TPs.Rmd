@@ -36,7 +36,7 @@ Audience: The public, Agency stakeholders, partners, HIV/AIDS stakeholders/activ
 
 Purpose: The purpose of this document is to create one place for the data points that can be shared by OHA leadership at events, in presentations, etc. 
 
-```{r, include=FALSE, echo=FALSE}
+```{r option, include=FALSE, echo=FALSE}
 options(scipen=999)
 ```
 
@@ -361,6 +361,68 @@ ovc_serv_cntry <- df_final %>%
   summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
   ungroup() %>%
   distinct(country) %>% nrow()
+```
+
+```{r epi_control_ovc, echo=FALSE, include = FALSE}
+
+df_arch1 <- si_path() %>% 
+  return_latest("OU_IM_FY15") %>% 
+  read_msd()
+
+df_arch <- df_arch1 %>% 
+  select(-c(qtr1:qtr4)) 
+
+# MUNGE -----------------------------------------------------------------
+
+#bind archived + current MSD and filter 
+df_bind <- df_final %>%
+  bind_rows(df_arch) %>% 
+  dplyr::filter(!(fiscal_year %in% c("2024", "2015", "2016", "2017")))%>% 
+  dplyr::filter(funding_agency %in% "USAID")
+
+cxca_scrn_gofurther_val <- df_bind %>% 
+  filter(indicator %in% c("CXCA_SCRN"),
+         standardizeddisaggregate %in% c("Total Numerator"),
+         #  trendscoarse == "<18",
+         fiscal_year %in% c("2018", "2019", "2020", "2021", "2022", "2023"),
+         funding_agency == "USAID",
+         country %in% c("Zimbabwe", "Botswana", "Eswatini", "Lesotho",
+           "Malawi", "Mozambique", "Namibia", "Zambia")) %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
+  mutate(cumulative = clean_number(cumulative, 2)) %>% 
+  pull(cumulative)
+
+cxca_scrn_val <- df_bind %>% 
+  filter(indicator %in% c("CXCA_SCRN"),
+         standardizeddisaggregate %in% c("Total Numerator"),
+         #  trendscoarse == "<18",
+         fiscal_year %in% c("2018", "2019", "2020", "2021", "2022", "2023"),
+         funding_agency == "USAID") %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
+  mutate(cumulative = clean_number(cumulative, 2)) %>% 
+  pull(cumulative)
+
+cxca_scrn_pos_val <- df_bind %>% 
+  filter(indicator %in% c("CXCA_SCRN_POS"),
+         standardizeddisaggregate %in% c("Total Numerator"),
+         #  trendscoarse == "<18",
+         fiscal_year %in% c("2018", "2019", "2020", "2021", "2022", "2023"),
+         funding_agency == "USAID") %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
+  pull(cumulative)
+
+cxca_tx_val <- df_bind %>% 
+  filter(indicator %in% c("CXCA_TX"),
+         standardizeddisaggregate %in% c("Total Numerator"),
+         #  trendscoarse == "<18",
+         fiscal_year %in% c("2018", "2019", "2020", "2021", "2022", "2023"),
+         funding_agency == "USAID") %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>%
+  pull(cumulative)
+
+cxca_tx_prct <- round((cxca_tx_val/cxca_scrn_pos_val)*100,0) 
+  
+
 ```
 
 ```{r prevention_prep, echo=FALSE, include = FALSE}
@@ -893,7 +955,7 @@ tb_art_share_val <- sum((tb_art_val/tb_stat_pos)*100) %>%
 
 29. In 2023, more than **`r kp_tx_val_clean`** [**`r kp_tx_val`**] members of key populations in **`r kp_tx_ou`** countries received life-saving HIV medication through USAID support. 
 
-30. Since 2018, USAID has supported programs that resulted in more than 2.7 million cervical cancer screenings for WLHIV under the PEPFAR supported Go Further Initiative. As of September 30, 2023, nearly two million women on life-saving HIV medication have been screened for cervical cancer by USAID programs. Nearly 90,000 women were found to have precancerous lesions, and of those, 74% received treatment.(*check separately with cxca code*)
+30. Since 2018, USAID has supported programs that resulted in more than **`r cxca_scrn_gofurther_val`** cervical cancer screenings for WLHIV under the PEPFAR supported Go Further Initiative. As of September 30, 2023, nearly **`r cxca_scrn_val`** women on life-saving HIV medication have been screened for cervical cancer by USAID programs. Nearly **`r cxca_scrn_pos_val`** women were found to have precancerous lesions, and of those, `r cxca_tx_prct`% received treatment.
 
 31. In 2023, USAID helped `r tb_share_val`% (more than **`r tb_tst_clean`** [**`r tb_tst`**]) of people with TB in 14 countries learn their HIV status. For those TB patients co-infected with HIV (more than `r tb_stat_pos`), USAID helped `r tb_art_share_val`% (or `r tb_art_val`) of them receive life-saving HIV medication through USAID PEPFAR-supported programs.
 
