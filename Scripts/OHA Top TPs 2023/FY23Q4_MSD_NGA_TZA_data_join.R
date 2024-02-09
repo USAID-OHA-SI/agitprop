@@ -48,9 +48,10 @@ setdiff(names(df_nga), names(df_msd))
 df_nga_new <- df_nga %>% 
   select(any_of(names_to_keep))
 
-#rbind together
+#rbind together removing TZ and NGA for FY23 ONLY
 df <- df_msd %>% 
-  filter(!operatingunit %in% c("Nigeria", "Tanzania")) %>% 
+  filter(!(operatingunit=="Nigeria" & fiscal_year=="2023"),
+         !(operatingunit=="Tanzania" & fiscal_year=="2023")) %>% 
   select(-c(qtr1:qtr4)) %>% 
   rbind(df_nga_new)
 
