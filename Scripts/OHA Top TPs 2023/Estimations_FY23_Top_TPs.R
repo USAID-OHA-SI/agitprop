@@ -55,25 +55,16 @@ df <- df_msd %>%
   select(-c(qtr1:qtr4)) %>% 
   rbind(df_nga_new)
 
-#initial MSD 
-df_initial <- si_path() %>%
-  return_latest("MER_Structured_Datasets_OU_IM_FY21-24_20231114_v1_1") %>%
+#Q4 TZA Daily Genie 
+df_TZA <- si_path() %>%
+  return_latest("Genie-OUByIMs-Tanzania-Daily-2024-02-07") %>%
   read_psd()
 
-# #check which variables in df_initial and not in df
-variables_not_in_df_initial <- setdiff(names(df), names(df_initial))
-variables_not_in_df <- setdiff(names(df_initial), names(df))
+#exclude extra columns 
+df_msd_TZA <- df_TZA %>% 
+  select(-c(qtr1:qtr4)) 
 
-# Print the results
-cat("Variables in df but not in df_initial:", variables_not_in_df_initial, "\n")
-cat("Variables in df_initial but not in df:", variables_not_in_df, "\n")
-
-#exclude extra columns and filter initial dataset to Tanzania
-df_msd_TZA <- df_initial %>% 
-  select(-c(qtr1:qtr4)) %>% 
-  filter(operatingunit == "Tanzania")
-
-#bind initial TZA data 
+#bind TZA data to clean MSD w/ NGA file
 df_final <- df %>% 
   rbind(df_msd_TZA)
 
@@ -96,6 +87,8 @@ ind<-distinct(df_bind,indicator,standardizeddisaggregate)
 
 # ESTIMATION INPUTS ------------------------------------------------------------
 
+
+#TX UNDER 15
 
 TX_U15<-df_bind %>% 
   mutate(OU_group=case_when(
@@ -149,7 +142,114 @@ TX_PVLS_U15_all<-df_bind %>%
   mutate(vls = (N/D)*100) %>% 
   prinf()
 
+#TX UNDER 10-19
+TX_10to19<-df_bind %>% 
+  mutate(OU_group=case_when(
+    operatingunit=="Nigeria" ~ "Nigeria",
+    operatingunit=="Tanzania" ~ "Tanzania",
+    TRUE ~ "All Other OUs"
+  )) %>% 
+  filter(indicator=="TX_CURR",
+         standardizeddisaggregate %in% c("Age/Sex/HIVStatus", "Age Aggregated/Sex/HIVStatus", "MostCompleteAgeDisagg"),
+         funding_agency=="USAID",
+         fiscal_year %in% c("2020","2021","2022","2023")) %>% 
+  mutate(age_grp=case_when(
+    ageasentered %in% c("10-14","15-19") ~ "ten_19",
+    TRUE ~ "all other ages"
+  )) %>% 
+  group_by(fiscal_year,OU_group,age_grp,indicator) %>% 
+  summarize_at(vars(cumulative),sum,na.rm=TRUE) %>% 
+  spread(age_grp,cumulative) %>% 
+  mutate(total = coalesce(`ten_19`, 0) + coalesce(`all other ages`, 0),
+         prct_ten_19=(`ten_19`/total)*100) %>% 
+  arrange(OU_group) %>% 
+  prinf()
 
+TX_10to19_vls<-df_bind %>% 
+  mutate(OU_group=case_when(
+    operatingunit=="Nigeria" ~ "Nigeria",
+    TRUE ~ "All Other OUs"
+  )) %>% 
+  filter(indicator=="TX_PVLS",
+         standardizeddisaggregate %in% c("Age Aggregated/Sex/Indication/HIVStatus", "Age/Sex/Indication/HIVStatus", "Age Aggregated/Sex"),
+         funding_agency=="USAID",
+         fiscal_year %in% c("2020","2021","2022","2023"),
+         ageasentered %in% c("10-14","15-19")) %>% 
+  group_by(fiscal_year,OU_group,indicator,numeratordenom) %>% 
+  summarize_at(vars(cumulative),sum,na.rm=TRUE) %>% 
+  spread(numeratordenom,cumulative) %>% 
+  mutate(vls = (N/D)*100) %>% 
+  arrange(OU_group) %>% 
+  prinf()
+  
+TX_10to19_vls_all<-df_bind %>% 
+  filter(indicator=="TX_PVLS",
+         standardizeddisaggregate %in% c("Age Aggregated/Sex/Indication/HIVStatus", "Age/Sex/Indication/HIVStatus", "Age Aggregated/Sex"),
+         funding_agency=="USAID",
+         fiscal_year %in% c("2020","2021","2022","2023"),
+         ageasentered %in% c("10-14","15-19")) %>% 
+  group_by(fiscal_year,indicator,numeratordenom) %>% 
+  summarize_at(vars(cumulative),sum,na.rm=TRUE) %>% 
+  spread(numeratordenom,cumulative) %>% 
+  mutate(vls = (N/D)*100) %>% 
+  prinf()
+
+
+#TX UNDER 20-29
+TX_20to29<-df_bind %>% 
+  mutate(OU_group=case_when(
+    operatingunit=="Nigeria" ~ "Nigeria",
+    operatingunit=="Tanzania" ~ "Tanzania",
+    TRUE ~ "All Other OUs"
+  )) %>% 
+  filter(indicator=="TX_CURR",
+         standardizeddisaggregate %in% c("Age/Sex/HIVStatus", "Age Aggregated/Sex/HIVStatus", "MostCompleteAgeDisagg"),
+         funding_agency=="USAID",
+         fiscal_year %in% c("2020","2021","2022","2023")) %>% 
+  mutate(age_grp=case_when(
+    ageasentered %in% c("20-24","25-29") ~ "twenty_29",
+    TRUE ~ "all other ages"
+  )) %>% 
+  group_by(fiscal_year,OU_group,age_grp,indicator) %>% 
+  summarize_at(vars(cumulative),sum,na.rm=TRUE) %>% 
+  spread(age_grp,cumulative) %>% 
+  mutate(total = coalesce(`twenty_29`, 0) + coalesce(`all other ages`, 0),
+         prct_twenty_29=(`twenty_29`/total)*100) %>% 
+  arrange(OU_group) %>% 
+  prinf()
+
+
+TX_20to29_vls<-df_bind %>% 
+  mutate(OU_group=case_when(
+    operatingunit=="Nigeria" ~ "Nigeria",
+    TRUE ~ "All Other OUs"
+  )) %>% 
+  filter(indicator=="TX_PVLS",
+         standardizeddisaggregate %in% c("Age Aggregated/Sex/Indication/HIVStatus", "Age/Sex/Indication/HIVStatus", "Age Aggregated/Sex"),
+         funding_agency=="USAID",
+         fiscal_year %in% c("2020","2021","2022","2023"),
+         ageasentered %in% c("20-24","25-29")) %>% 
+  group_by(fiscal_year,OU_group,indicator,numeratordenom) %>% 
+  summarize_at(vars(cumulative),sum,na.rm=TRUE) %>% 
+  spread(numeratordenom,cumulative) %>% 
+  mutate(vls = (N/D)*100) %>% 
+  arrange(OU_group) %>% 
+  prinf()
+
+
+TX_20to29_vls_all<-df_bind %>% 
+  filter(indicator=="TX_PVLS",
+         standardizeddisaggregate %in% c("Age Aggregated/Sex/Indication/HIVStatus", "Age/Sex/Indication/HIVStatus", "Age Aggregated/Sex"),
+         funding_agency=="USAID",
+         fiscal_year %in% c("2020","2021","2022","2023"),
+         ageasentered %in% c("20-24","25-29")) %>% 
+  group_by(fiscal_year,indicator,numeratordenom) %>% 
+  summarize_at(vars(cumulative),sum,na.rm=TRUE) %>% 
+  spread(numeratordenom,cumulative) %>% 
+  mutate(vls = (N/D)*100) %>% 
+  prinf()
+
+#TX KP
 TX_KP<-df_bind %>% 
   mutate(OU_group=case_when(
     operatingunit=="Nigeria" ~ "Nigeria",
