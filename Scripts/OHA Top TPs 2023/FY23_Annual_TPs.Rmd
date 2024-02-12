@@ -362,13 +362,26 @@ ovc_serv_cntry <- df_final %>%
   summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
   ungroup() %>%
   distinct(country) %>% nrow()
+
+
+ovc_serv_10_14_val <- df_final %>%
+  filter(indicator %in% c("OVC_SERV"),
+         standardizeddisaggregate %in% c("Age/Sex/Preventive"),
+         fiscal_year == metadata$curr_fy,
+         funding_agency == "USAID", 
+         ageasentered == "10-14") %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T)) %>% 
+  mutate(cumulative = clean_number(cumulative, 2)) %>%
+  pull(cumulative)
+
+
 ```
 
 ```{r cx_ca, echo=FALSE, include = FALSE}
 
 df_arch1 <- si_path() %>% 
   return_latest("OU_IM_FY15") %>% 
-  read_msd()
+  read_psd()
 
 df_arch <- df_arch1 %>% 
   select(-c(qtr1:qtr4)) 
@@ -765,6 +778,21 @@ post_anc_test_val<-df_final %>%
   pull(cumulative)
 
 
+pmtct_anc_test_change_val<-df_final %>% 
+   filter(indicator=="HTS_TST",
+         standardizeddisaggregate=="Modality/Age/Sex/Result",
+         funding_agency=="USAID",
+         fiscal_year %in% c("2022","2023"),
+         modality=="Post ANC1") %>%
+  group_by(fiscal_year, funding_agency,standardizeddisaggregate) %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
+  ungroup() %>% 
+  spread(fiscal_year,cumulative) %>% 
+  mutate(prct_change = round((`2022` / `2023`) * 100, 0)) %>%  
+  pull(prct_change)
+  
+  
+  
 pmtct_art_val<-df_final %>% 
   filter(indicator=="PMTCT_ART",
          standardizeddisaggregate %in% c("Total Numerator","Total Denominator"),
@@ -776,7 +804,7 @@ pmtct_art_val<-df_final %>%
   spread(standardizeddisaggregate,cumulative) %>% 
   mutate(prct=round((`Total Numerator`/`Total Denominator`)*100),0)%>% 
   pull(prct)
-  
+
          
 pmtct_vls_val<-df_final %>% 
   filter(indicator=="TX_PVLS",
@@ -964,7 +992,7 @@ tb_art_share_val <- sum((tb_art_val/tb_stat_pos)*100) %>%
 
 7. In 2023, USAID supported over In the last year, USAID supported nearly **`r ovc_serv_val`** orphans and vulnerable children (OVC) and their families affected by HIV in **`r ovc_serv_cntry`** countries including over **`r ovc_serv_child_adolesc_val`** children and adolescents living with HIV. Services provided to families in the OVC program address critical socio-economic and other structural barriers to HIV epidemic control, and included, among others, household economic strengthening, education support, primary prevention of HIV and sexual violence, building of parenting skills, facilitating access to maternal and child healthcare, and HIV specific testing, care, and treatment through close collaboration with clinical partners.
 
-8. In 2023, USAID's OVC and DREAMS programs supported nearly 660,000 girls and boys ages 10-14 to complete evidence-based curricula supporting primary prevention of HIV and sexual violence. 
+8. In 2023, USAID's OVC and DREAMS programs supported nearly **`r ovc_serv_10_14_val`** girls and boys ages 10-14 to complete evidence-based curricula supporting primary prevention of HIV and sexual violence. 
 
 **Prevention**
 
@@ -1002,7 +1030,7 @@ tb_art_share_val <- sum((tb_art_val/tb_stat_pos)*100) %>%
 
 23. USAID is driving global strategic thinking on sustaining HIV treatment through integration of ART services into routine primary health care (PHC) services. Since the launch of USAID’s Primary Impact in December 2022, USAID has made concerted progress to translate vision to action in seven focus countries with USAID/PEPFAR programs. USAID partners with host that?country governments and supports implementing partners in developing sustainable treatment models which integrate HIV prevention and treatment into government PHC systems, integrating both clinical service delivery and systems level components to improve HIV outcomes and reduce morbidity and mortality. USAID also supports implementing partners to address KP clients’ comprehensive health needs– moving beyond single diseases to treat whole persons within KP-focused and KP-friendly settings.
 
-24. USAID supports ending vertical HIV transmission, and since 2015, has enabled nearly **3.3 million** infants to be born HIV-free to mothers living with HIV. In 2023, USAID ensured that **`r pmtct_stat_val`**% of pregnant women knew their HIV status, and increased the proportion of women tested after the first antenatal visit by **54%** to **`r post_anc_test_val`**. **`r pmtct_art_val`%** of all pregnant women living with HIV received life-saving HIV treatment, and **`r pmtct_vls_val`%** attained viral suppression. 
+24. USAID supports ending vertical HIV transmission, and since 2015, has enabled nearly **3.3 million** infants to be born HIV-free to mothers living with HIV. In 2023, USAID ensured that **`r pmtct_stat_val`**% of pregnant women knew their HIV status, and increased the proportion of women tested after the first antenatal visit by **`r pmtct_anc_test_change_val`%** to **`r post_anc_test_val`**. **`r pmtct_art_val`%** of all pregnant women living with HIV received life-saving HIV treatment, and **`r pmtct_vls_val`%** attained viral suppression. 
 
 25. Among children (age<15 years) living with HIV, USAID supported nearly **`r df_tx_curr_youth_val`** children to stay on HIV treatment and to achieve 90% viral load suppression, promoting healthier outcomes. USAID continues to support the global rollout of easier-to-use and more effective pediatric ART regimens, including pediatric DTG (pDTG) and the new fixed dose combination regimen, pediatric ALD (pALD).
 
@@ -1016,7 +1044,7 @@ tb_art_share_val <- sum((tb_art_val/tb_stat_pos)*100) %>%
 
 30. In 2023, more than **`r kp_tx_val_clean`** [**`r kp_tx_val`**] members of key populations in **`r kp_tx_ou`** countries received life-saving HIV medication through USAID support. 
 
-31. Since 2018, USAID has supported programs that resulted in more than **`r cxca_scrn_gofurther_val`** cervical cancer screenings for WLHIV under the PEPFAR supported Go Further Initiative. As of September 30, 2023, nearly **`r cxca_scrn_val`** women on life-saving HIV medication have been screened for cervical cancer by USAID programs. Nearly **`r cxca_scrn_pos_val`** women were found to have precancerous lesions, and of those, `r cxca_tx_prct`% received treatment.
+31. Since 2018, USAID has supported programs that resulted in more than **`r cxca_scrn_gofurther_val`** cervical cancer screenings for WLHIV under the PEPFAR supported Go Further Initiative. As of September 30, 2023, nearly **`r cxca_scrn_val`** women on life-saving HIV medication have been screened for cervical cancer by USAID programs. Nearly **`r cxca_scrn_pos_val`** women were found to have precancerous lesions, and of those, **`r cxca_tx_prct`%** received treatment.
 
 32. In 2023, USAID helped `r tb_share_val`% (more than **`r tb_tst_clean`** [**`r tb_tst`**]) of people with TB in 14 countries learn their HIV status. For those TB patients co-infected with HIV (more than `r tb_stat_pos`), USAID helped `r tb_art_share_val`% (or `r tb_art_val`) of them receive life-saving HIV medication through USAID PEPFAR-supported programs.
 
