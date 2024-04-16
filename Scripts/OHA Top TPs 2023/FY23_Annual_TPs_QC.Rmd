@@ -516,6 +516,185 @@ df_hts_youth %>%
   gt_theme_nytimes() 
 ```
 
+### TP #11:  VERTICAL TRANSMISSION
+
+```{r pmtct_stat_qc, echo=TRUE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
+#pmtct_stat
+pmtct_stat_qc<-df_final %>% 
+  filter(indicator=="PMTCT_STAT",
+         standardizeddisaggregate %in% c("Total Numerator","Total Denominator"),
+         funding_agency=="USAID",
+         fiscal_year == metadata_msd$curr_fy) %>% 
+  mutate(ou_qc = case_when(operatingunit == "Nigeria" ~ "Nigeria",
+                          # operatingunit == "Tanzania" ~ "Tanzania",
+                           TRUE ~ "All other OUs")) %>% 
+  group_by(fiscal_year, funding_agency,standardizeddisaggregate, ou_qc) %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
+  ungroup() %>% 
+  spread(standardizeddisaggregate,cumulative) %>% 
+  mutate(prct=(`Total Numerator`/`Total Denominator`))
+  
+```
+
+```{r pmtct_stat_table, echo=FALSE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
+pmtct_stat_qc %>% 
+  gt() %>% 
+  tab_row_group(
+    label = "PMTCT_STAT",
+    rows = funding_agency %in% c("USAID")
+  ) %>%
+  fmt_number(columns = c(6,6), 
+             decimals = 0) %>% 
+  fmt_percent(columns = 6,
+              decimals = 1) %>%
+ summary_rows(
+    columns = c(4,5),
+    fns = list(
+      Overall = ~ sum(., na.rm = T)
+    ),
+    formatter = fmt_number,
+    decimals = 0
+  ) %>% 
+  tab_header(
+    title = glue("TP #24: FY23 PMTCT STAT N/D" %>% toupper())) %>% 
+  gt_theme_nytimes() 
+```
+
+```{r pmtct_post_anc1_qc, echo=TRUE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
+#pmtct_post_anc_test
+
+pmtct_anc_test_change_qc<-df_final %>% 
+   filter(indicator=="HTS_TST",
+         standardizeddisaggregate=="Modality/Age/Sex/Result",
+         funding_agency=="USAID",
+         fiscal_year %in% c("2022","2023"),
+         modality=="Post ANC1") %>%
+  mutate(ou_qc = case_when(operatingunit == "Nigeria" ~ "Nigeria",
+                          # operatingunit == "Tanzania" ~ "Tanzania",
+                           TRUE ~ "All other OUs")) %>% 
+  group_by(fiscal_year, funding_agency,modality,ou_qc) %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
+  ungroup() %>% 
+  spread(fiscal_year,cumulative) %>% 
+  mutate(prct_change = ((`2023`-`2022`)/ `2022`))
+
+  
+```
+
+```{r pmtct_post_anc1_table, echo=FALSE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
+pmtct_anc_test_change_qc %>% 
+  gt() %>% 
+  tab_row_group(
+    label = "POST ANC1 TESTING",
+    rows = funding_agency %in% c("USAID")
+  ) %>%
+  fmt_number(columns = c(6,6), 
+             decimals = 0) %>% 
+  fmt_percent(columns = 6,
+              decimals = 1) %>%
+ summary_rows(
+    columns = c(4,5),
+    fns = list(
+      Overall = ~ sum(., na.rm = T)
+    ),
+    formatter = fmt_number,
+    decimals = 0
+  ) %>% 
+  tab_header(
+    title = glue("TP #24: FY22 & 23 POST ANC1 TESTING" %>% toupper())) %>% 
+  gt_theme_nytimes() 
+```
+
+```{r pmtct_art_qc, echo=TRUE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
+#pmtct_art
+
+pmtct_art_qc<-df_final %>% 
+   filter(indicator=="PMTCT_ART",
+         standardizeddisaggregate %in% c("Total Numerator","Total Denominator"),
+         funding_agency=="USAID",
+         fiscal_year == metadata_msd$curr_fy) %>%
+  mutate(ou_qc = case_when(operatingunit == "Nigeria" ~ "Nigeria",
+                         #  operatingunit == "Tanzania" ~ "Tanzania",
+                           TRUE ~ "All other OUs")) %>% 
+  group_by(fiscal_year, funding_agency,numeratordenom,ou_qc) %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
+  ungroup() %>% 
+  spread(numeratordenom,cumulative) %>% 
+  mutate(Percent = N/D)
+
+  
+```
+
+```{r pmtct_art_table, echo=FALSE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
+pmtct_art_qc %>% 
+  gt() %>% 
+  tab_row_group(
+    label = "PMTCT_ART",
+    rows = funding_agency %in% c("USAID")
+  ) %>%
+  fmt_number(columns = c(6,6), 
+             decimals = 0) %>% 
+  fmt_percent(columns = 6,
+              decimals = 1) %>%
+ summary_rows(
+    columns = c(4,5),
+    fns = list(
+      Overall = ~ sum(., na.rm = T)
+    ),
+    formatter = fmt_number,
+    decimals = 0
+  ) %>% 
+  tab_header(
+    title = glue("TP #24: FY23 PMTCT_ART" %>% toupper())) %>% 
+  gt_theme_nytimes() 
+```
+
+```{r pmtct_vls_qc, echo=TRUE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
+#pmtct_VLS
+
+pmtct_vls_qc<-df_final %>% 
+   filter(indicator=="TX_PVLS",
+         standardizeddisaggregate =="PregnantOrBreastfeeding/Indication/HIVStatus",
+         grepl("Pregnant", otherdisaggregate),
+         funding_agency=="USAID",
+         fiscal_year == metadata_msd$curr_fy) %>%
+  mutate(ou_qc = case_when(operatingunit == "Nigeria" ~ "Nigeria",
+                          # operatingunit == "Tanzania" ~ "Tanzania",
+                           TRUE ~ "All other OUs")) %>% 
+  group_by(fiscal_year,funding_agency,numeratordenom,ou_qc) %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
+  ungroup() %>% 
+  spread(numeratordenom,cumulative) %>% 
+  mutate(Percent = N/D)
+
+  
+```
+
+```{r pmtct_vls_table, echo=FALSE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
+pmtct_vls_qc %>% 
+  gt() %>% 
+  tab_row_group(
+    label = "PMTCT VLS",
+    rows = funding_agency %in% c("USAID")
+  ) %>%
+  fmt_number(columns = c(6,6), 
+             decimals = 0) %>% 
+  fmt_percent(columns = 6,
+              decimals = 1) %>%
+ summary_rows(
+    columns = c(4,5),
+    fns = list(
+      Overall = ~ sum(., na.rm = T)
+    ),
+    formatter = fmt_number,
+    decimals = 0
+  ) %>% 
+  tab_header(
+    title = glue("TP #24: FY23 PMTCT VLS Among Preg. Women" %>% toupper())) %>% 
+  gt_theme_nytimes() 
+
+```
+
 
 ------------------------------------------------------------------------
 
@@ -1046,184 +1225,7 @@ qc_hts_lp %>%
 ## **Treatment and Viral Suppression Talking Points**
 
 
-### TP #24:  VERTICAL TRANSMISSION
 
-```{r pmtct_stat_qc, echo=TRUE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
-#pmtct_stat
-pmtct_stat_qc<-df_final %>% 
-  filter(indicator=="PMTCT_STAT",
-         standardizeddisaggregate %in% c("Total Numerator","Total Denominator"),
-         funding_agency=="USAID",
-         fiscal_year == metadata_msd$curr_fy) %>% 
-  mutate(ou_qc = case_when(operatingunit == "Nigeria" ~ "Nigeria",
-                           operatingunit == "Tanzania" ~ "Tanzania",
-                           TRUE ~ "All other OUs")) %>% 
-  group_by(fiscal_year, funding_agency,standardizeddisaggregate, ou_qc) %>% 
-  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
-  ungroup() %>% 
-  spread(standardizeddisaggregate,cumulative) %>% 
-  mutate(prct=(`Total Numerator`/`Total Denominator`))
-  
-```
-
-```{r pmtct_stat_table, echo=FALSE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
-pmtct_stat_qc %>% 
-  gt() %>% 
-  tab_row_group(
-    label = "PMTCT_STAT",
-    rows = funding_agency %in% c("USAID")
-  ) %>%
-  fmt_number(columns = c(6,6), 
-             decimals = 0) %>% 
-  fmt_percent(columns = 6,
-              decimals = 1) %>%
- summary_rows(
-    columns = c(4,5),
-    fns = list(
-      Overall = ~ sum(., na.rm = T)
-    ),
-    formatter = fmt_number,
-    decimals = 0
-  ) %>% 
-  tab_header(
-    title = glue("TP #24: FY23 PMTCT STAT N/D" %>% toupper())) %>% 
-  gt_theme_nytimes() 
-```
-
-```{r pmtct_post_anc1_qc, echo=TRUE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
-#pmtct_post_anc_test
-
-pmtct_anc_test_change_qc<-df_final %>% 
-   filter(indicator=="HTS_TST",
-         standardizeddisaggregate=="Modality/Age/Sex/Result",
-         funding_agency=="USAID",
-         fiscal_year %in% c("2022","2023"),
-         modality=="Post ANC1") %>%
-  mutate(ou_qc = case_when(operatingunit == "Nigeria" ~ "Nigeria",
-                           operatingunit == "Tanzania" ~ "Tanzania",
-                           TRUE ~ "All other OUs")) %>% 
-  group_by(fiscal_year, funding_agency,modality,ou_qc) %>% 
-  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
-  ungroup() %>% 
-  spread(fiscal_year,cumulative) %>% 
-  mutate(prct_change = (`2022` / `2023`))
-
-  
-```
-
-```{r pmtct_post_anc1_table, echo=FALSE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
-pmtct_anc_test_change_qc %>% 
-  gt() %>% 
-  tab_row_group(
-    label = "POST ANC1 TESTING",
-    rows = funding_agency %in% c("USAID")
-  ) %>%
-  fmt_number(columns = c(6,6), 
-             decimals = 0) %>% 
-  fmt_percent(columns = 6,
-              decimals = 1) %>%
- summary_rows(
-    columns = c(4,5),
-    fns = list(
-      Overall = ~ sum(., na.rm = T)
-    ),
-    formatter = fmt_number,
-    decimals = 0
-  ) %>% 
-  tab_header(
-    title = glue("TP #24: FY22 & 23 POST ANC1 TESTING" %>% toupper())) %>% 
-  gt_theme_nytimes() 
-```
-
-```{r pmtct_art_qc, echo=TRUE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
-#pmtct_art
-
-pmtct_art_qc<-df_final %>% 
-   filter(indicator=="PMTCT_ART",
-         standardizeddisaggregate %in% c("Total Numerator","Total Denominator"),
-         funding_agency=="USAID",
-         fiscal_year == metadata_msd$curr_fy) %>%
-  mutate(ou_qc = case_when(operatingunit == "Nigeria" ~ "Nigeria",
-                           operatingunit == "Tanzania" ~ "Tanzania",
-                           TRUE ~ "All other OUs")) %>% 
-  group_by(fiscal_year, funding_agency,numeratordenom,ou_qc) %>% 
-  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
-  ungroup() %>% 
-  spread(numeratordenom,cumulative) %>% 
-  mutate(Percent = N/D)
-
-  
-```
-
-```{r pmtct_art_table, echo=FALSE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
-pmtct_art_qc %>% 
-  gt() %>% 
-  tab_row_group(
-    label = "PMTCT_ART",
-    rows = funding_agency %in% c("USAID")
-  ) %>%
-  fmt_number(columns = c(6,6), 
-             decimals = 0) %>% 
-  fmt_percent(columns = 6,
-              decimals = 1) %>%
- summary_rows(
-    columns = c(4,5),
-    fns = list(
-      Overall = ~ sum(., na.rm = T)
-    ),
-    formatter = fmt_number,
-    decimals = 0
-  ) %>% 
-  tab_header(
-    title = glue("TP #24: FY23 PMTCT_ART" %>% toupper())) %>% 
-  gt_theme_nytimes() 
-```
-
-```{r pmtct_vls_qc, echo=TRUE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
-#pmtct_VLS
-
-pmtct_vls_qc<-df_final %>% 
-   filter(indicator=="TX_PVLS",
-         standardizeddisaggregate =="PregnantOrBreastfeeding/Indication/HIVStatus",
-         grepl("Pregnant", otherdisaggregate),
-         funding_agency=="USAID",
-         fiscal_year == metadata_msd$curr_fy) %>%
-  mutate(ou_qc = case_when(operatingunit == "Nigeria" ~ "Nigeria",
-                           operatingunit == "Tanzania" ~ "Tanzania",
-                           TRUE ~ "All other OUs")) %>% 
-  group_by(fiscal_year,funding_agency,numeratordenom,ou_qc) %>% 
-  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
-  ungroup() %>% 
-  spread(numeratordenom,cumulative) %>% 
-  mutate(Percent = N/D)
-
-  
-```
-
-```{r pmtct_vls_table, echo=FALSE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
-pmtct_vls_qc %>% 
-  gt() %>% 
-  tab_row_group(
-    label = "PMTCT VLS",
-    rows = funding_agency %in% c("USAID")
-  ) %>%
-  fmt_number(columns = c(6,6), 
-             decimals = 0) %>% 
-  fmt_percent(columns = 6,
-              decimals = 1) %>%
- summary_rows(
-    columns = c(4,5),
-    fns = list(
-      Overall = ~ sum(., na.rm = T)
-    ),
-    formatter = fmt_number,
-    decimals = 0
-  ) %>% 
-  tab_header(
-    title = glue("TP #24: FY23 PMTCT VLS Among Preg. Women" %>% toupper())) %>% 
-  gt_theme_nytimes() 
-
-```
 ### TP #29:  KP_PREV
 
 ```{r kp_prev_qc, echo=TRUE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
