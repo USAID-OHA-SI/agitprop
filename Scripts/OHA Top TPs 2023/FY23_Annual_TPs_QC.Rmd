@@ -695,6 +695,118 @@ pmtct_vls_qc %>%
 
 ```
 
+### TP #14:  CX_CA
+
+```{r prep_cxca_df, echo=FALSE, include = FALSE, warning=FALSE, message=FALSE}
+
+df_arch1 <- si_path() %>% 
+  return_latest("OU_IM_FY15") %>% 
+  read_psd()
+
+df_arch <- df_arch1 %>% 
+  select(-c(qtr1:qtr4)) 
+
+# MUNGE -----------------------------------------------------------------
+
+#bind archived + current MSD and filter 
+df_bind <- df_final %>%
+  bind_rows(df_arch) %>% 
+  dplyr::filter(!(fiscal_year %in% c("2024", "2015", "2016", "2017")))%>% 
+  dplyr::filter(funding_agency %in% "USAID")
+```
+
+```{r cxca_qc, echo=TRUE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
+cxca_scrn_gofurther_val <- df_bind %>% 
+  filter(indicator %in% c("CXCA_SCRN"),
+         standardizeddisaggregate %in% c("Total Numerator"),
+         #  trendscoarse == "<18",
+         fiscal_year %in% c("2018", "2019", "2020", "2021", "2022", "2023"),
+         funding_agency == "USAID",
+         country %in% c("Zimbabwe", "Botswana", "Eswatini", "Lesotho",
+                        "Malawi", "Mozambique", "Namibia", "Zambia")) %>%
+  group_by(funding_agency) %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
+  mutate(ou_qc = "Go Futher Countries") %>% 
+  select(funding_agency, ou_qc, cumulative)
+
+cxca_scrn_val <- df_bind %>% 
+  filter(indicator %in% c("CXCA_SCRN"),
+         standardizeddisaggregate %in% c("Total Numerator"),
+         #  trendscoarse == "<18",
+         fiscal_year %in% c("2018", "2019", "2020", "2021", "2022", "2023"),
+         funding_agency == "USAID") %>% 
+  mutate(ou_qc = case_when(operatingunit == "Nigeria" ~ "Nigeria",
+                         #  operatingunit == "Tanzania" ~ "Tanzania",
+                           TRUE ~ "All other OUs")) %>%
+  group_by(funding_agency, ou_qc) %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") 
+```
+
+```{r cxca_tbl, echo=FALSE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
+cxca_scrn_gofurther_val %>% 
+  rbind(cxca_scrn_val) %>% 
+  mutate(ou_qc = case_when(ou_qc == "All other OUs" ~ "All other OUs minus NGA",
+                           ou_qc == "Go Futher Countries" ~ "Only Go Futher Countries",
+                           TRUE ~ ou_qc)) %>% 
+  gt() %>% 
+  tab_row_group(
+    label = "Go Further Countries",
+    rows = ou_qc %in% c("Only Go Futher Countries")
+  ) %>%
+  tab_row_group(
+    label = " ",
+    rows = ou_qc %ni% c("Only Go Futher Countries")
+  ) %>% 
+  fmt_number(columns = c(3), 
+             decimals = 0) %>% 
+  summary_rows(
+    columns = c(3),
+    fns = list(
+      Overall = ~ sum(., na.rm = T)
+    ),
+    formatter = fmt_number,
+    decimals = 0
+  ) %>% 
+  tab_header(
+    title = glue("TP #31: CXCA_SCRN Cumulative (2018-2023)" %>% toupper())) %>% 
+  gt_theme_nytimes() 
+```
+
+```{r cxca_pos_qc, echo=TRUE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
+cxca_scrn_pos_val <- df_bind %>% 
+  filter(indicator %in% c("CXCA_SCRN_POS", "CXCA_TX"),
+         standardizeddisaggregate %in% c("Total Numerator"),
+         #  trendscoarse == "<18",
+         fiscal_year %in% c("2018", "2019", "2020", "2021", "2022", "2023"),
+         funding_agency == "USAID") %>%
+  mutate(ou_qc = case_when(operatingunit == "Nigeria" ~ "Nigeria",
+                           #operatingunit == "Tanzania" ~ "Tanzania",
+                           TRUE ~ "All other OUs")) %>%
+  group_by(indicator, funding_agency, ou_qc) %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
+  pivot_wider(names_from = "indicator", values_from = "cumulative") %>% 
+  mutate(tx_prct = CXCA_TX/CXCA_SCRN_POS)
+```
+
+```{r cxca_pos_tbl, echo=FALSE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
+cxca_scrn_pos_val %>% 
+  gt() %>% 
+  fmt_number(columns = c(3,4), 
+             decimals = 0) %>% 
+  fmt_percent(columns = 5,
+              decimals = 1) %>%
+  grand_summary_rows(
+    columns = c(3,4),
+    fns = list(
+      Overall = ~ sum(., na.rm = T)
+    ),
+    formatter = fmt_number,
+    decimals = 0
+  ) %>% 
+  tab_header(
+    title = glue("TP #31: CXCA_SCRN_POS and CXCA_TX Cumulative (FY18-23)" %>% toupper())) %>% 
+  gt_theme_nytimes() 
+```
 
 ------------------------------------------------------------------------
 
@@ -1264,118 +1376,7 @@ kp_prev_val %>%
 ```
 
 
-### TP #31:  CX_CA
 
-```{r prep_cxca_df, echo=FALSE, include = FALSE, warning=FALSE, message=FALSE}
-
-df_arch1 <- si_path() %>% 
-  return_latest("OU_IM_FY15") %>% 
-  read_psd()
-
-df_arch <- df_arch1 %>% 
-  select(-c(qtr1:qtr4)) 
-
-# MUNGE -----------------------------------------------------------------
-
-#bind archived + current MSD and filter 
-df_bind <- df_final %>%
-  bind_rows(df_arch) %>% 
-  dplyr::filter(!(fiscal_year %in% c("2024", "2015", "2016", "2017")))%>% 
-  dplyr::filter(funding_agency %in% "USAID")
-```
-
-```{r cxca_qc, echo=TRUE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
-cxca_scrn_gofurther_val <- df_bind %>% 
-  filter(indicator %in% c("CXCA_SCRN"),
-         standardizeddisaggregate %in% c("Total Numerator"),
-         #  trendscoarse == "<18",
-         fiscal_year %in% c("2018", "2019", "2020", "2021", "2022", "2023"),
-         funding_agency == "USAID",
-         country %in% c("Zimbabwe", "Botswana", "Eswatini", "Lesotho",
-                        "Malawi", "Mozambique", "Namibia", "Zambia")) %>%
-  group_by(funding_agency) %>% 
-  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
-  mutate(ou_qc = "Go Futher Countries") %>% 
-  select(funding_agency, ou_qc, cumulative)
-
-cxca_scrn_val <- df_bind %>% 
-  filter(indicator %in% c("CXCA_SCRN"),
-         standardizeddisaggregate %in% c("Total Numerator"),
-         #  trendscoarse == "<18",
-         fiscal_year %in% c("2018", "2019", "2020", "2021", "2022", "2023"),
-         funding_agency == "USAID") %>% 
-  mutate(ou_qc = case_when(operatingunit == "Nigeria" ~ "Nigeria",
-                           operatingunit == "Tanzania" ~ "Tanzania",
-                           TRUE ~ "All other OUs")) %>%
-  group_by(funding_agency, ou_qc) %>% 
-  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") 
-```
-
-```{r cxca_tbl, echo=FALSE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
-cxca_scrn_gofurther_val %>% 
-  rbind(cxca_scrn_val) %>% 
-  mutate(ou_qc = case_when(ou_qc == "All other OUs" ~ "All other OUs minus NGA/TZA",
-                           ou_qc == "Go Futher Countries" ~ "Only Go Futher Countries",
-                           TRUE ~ ou_qc)) %>% 
-  gt() %>% 
-  tab_row_group(
-    label = "Go Further Countries",
-    rows = ou_qc %in% c("Only Go Futher Countries")
-  ) %>%
-  tab_row_group(
-    label = " ",
-    rows = ou_qc %ni% c("Only Go Futher Countries")
-  ) %>% 
-  fmt_number(columns = c(3), 
-             decimals = 0) %>% 
-  summary_rows(
-    columns = c(3),
-    fns = list(
-      Overall = ~ sum(., na.rm = T)
-    ),
-    formatter = fmt_number,
-    decimals = 0
-  ) %>% 
-  tab_header(
-    title = glue("TP #31: CXCA_SCRN Cumulative (2018-2023)" %>% toupper())) %>% 
-  gt_theme_nytimes() 
-```
-
-```{r cxca_pos_qc, echo=TRUE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
-cxca_scrn_pos_val <- df_bind %>% 
-  filter(indicator %in% c("CXCA_SCRN_POS", "CXCA_TX"),
-         standardizeddisaggregate %in% c("Total Numerator"),
-         #  trendscoarse == "<18",
-         fiscal_year %in% c("2018", "2019", "2020", "2021", "2022", "2023"),
-         funding_agency == "USAID") %>%
-  mutate(ou_qc = case_when(operatingunit == "Nigeria" ~ "Nigeria",
-                           operatingunit == "Tanzania" ~ "Tanzania",
-                           TRUE ~ "All other OUs")) %>%
-  group_by(indicator, funding_agency, ou_qc) %>% 
-  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
-  pivot_wider(names_from = "indicator", values_from = "cumulative") %>% 
-  mutate(tx_prct = CXCA_TX/CXCA_SCRN_POS)
-```
-
-```{r cxca_pos_tbl, echo=FALSE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
-cxca_scrn_pos_val %>% 
-  gt() %>% 
-  fmt_number(columns = c(3,4), 
-             decimals = 0) %>% 
-  fmt_percent(columns = 5,
-              decimals = 1) %>%
-  grand_summary_rows(
-    columns = c(3,4),
-    fns = list(
-      Overall = ~ sum(., na.rm = T)
-    ),
-    formatter = fmt_number,
-    decimals = 0
-  ) %>% 
-  tab_header(
-    title = glue("TP #31: CXCA_SCRN_POS and CXCA_TX Cumulative (FY18-23)" %>% toupper())) %>% 
-  gt_theme_nytimes() 
-```
 ### TP #32:  TB
 
 ```{r tb_qc, echo=TRUE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
