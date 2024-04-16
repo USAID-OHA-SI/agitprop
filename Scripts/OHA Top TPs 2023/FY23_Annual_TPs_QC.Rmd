@@ -3,15 +3,12 @@ title: "Annual Talking Points QC Documentation"
 author: "Amina Chtourou, Gina Sarfaty, Karishma Srikanth"
 date: "2/6/2024"
 output:
-    html_document:
+  html_document:
     fig_width: 10
     fig_height: 5.625
-    theme: cosmo
+    theme: flatly
     dpi: 330
-    toc: true
-    toc_depth: 2
 ---
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -30,8 +27,6 @@ knitr::opts_chunk$set(echo = TRUE)
   library(lubridate)
   library(googlesheets4)
   library(mindthegap)
-  library(gt)
-  library(gtExtras)
 
 day <- lubridate::today()
   
@@ -44,7 +39,7 @@ options(scipen=999)
 ```{r data, include=FALSE, echo=FALSE}
 #Current MSD
 filepath <- si_path() %>% 
-  return_latest("MER_Structured_Datasets_OU_IM_FY21-24")
+  return_latest("MER_Structured_Datasets_OU_IM_FY22-24")
 
 metadata_msd <- list(curr_pd = "FY23Q4",
                   curr_fy = 2023,
@@ -74,23 +69,26 @@ df_nga_new <- df_nga %>%
 
 #rbind together removing TZ and NGA for FY23 ONLY
 df <- df_msd %>% 
-  filter(!(operatingunit=="Nigeria" & fiscal_year=="2023"),
-         !(operatingunit=="Tanzania" & fiscal_year=="2023")) %>% 
+  filter(!(operatingunit=="Nigeria" & fiscal_year=="2023")
+         # ,
+         # !(operatingunit=="Tanzania" & fiscal_year=="2023")
+         ) %>% 
   select(-c(qtr1:qtr4)) %>% 
   rbind(df_nga_new)
 
-#Q4 TZA Daily Genie 
-df_TZA <- si_path() %>%
-  return_latest("Genie-OUByIMs-Tanzania-Daily-2024-02-07") %>%
-  read_psd()
-
-#exclude extra columns 
-df_msd_TZA <- df_TZA %>% 
-  select(-c(qtr1:qtr4)) 
+# #Q4 TZA Daily Genie 
+# df_TZA <- si_path() %>%
+#   return_latest("Genie-OUByIMs-Tanzania-Daily-2024-02-07") %>%
+#   read_psd()
+# 
+# #exclude extra columns 
+# df_msd_TZA <- df_TZA %>% 
+#   select(-c(qtr1:qtr4)) 
 
 #bind TZA data to clean MSD w/ NGA file
-df_final <- df %>% 
-  rbind(df_msd_TZA)
+df_final <- df 
+# %>% 
+#   rbind(df_msd_TZA)
 
 # load source functions
 #source("Scripts/archive/99_utilities.R")
@@ -105,7 +103,7 @@ df_final <- df %>%
   
   #MSD path
   dsnu_msd_path <- si_path() %>% 
-    return_latest("PSNU_IM_DREAMS_FY21-24")
+    return_latest("PSNU_IM_DREAMS_FY22-24")
   
     #import DREAMS DSNU crosswalk
     #recommend adding psnu_uids to this sheet
@@ -259,6 +257,8 @@ Last Updated: `r day`
 ## **Epidemic Control Checks Documentation**
 
 The epi control section has been verified and confirmed in [this document](https://docs.google.com/document/d/11ezAbTw6eWkBXu-NZrINt3iSNcPYhoEMswJoZtPOu9w/edit).
+
+## **Prevention Talking Points**
 
 ### TP #7: OVC
 
