@@ -88,8 +88,13 @@ df_final <- df
 # %>% 
 #   rbind(df_msd_TZA)
 
-# load source functions
-#source("Scripts/archive/99_utilities.R")
+# old MSD
+
+#Current MSD
+arch_filepath <- si_path() %>% 
+  return_latest("MER_Structured_Datasets_OU_IM_FY15")
+
+df_arch <- read_psd(arch_filepath)
 
 ```
 
@@ -695,6 +700,59 @@ pmtct_vls_qc %>%
 
 ```
 
+```{r pmtct_eid, echo=TRUE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
+
+ hiv_free_21_23 <- 
+    df_final %>% 
+    filter(funding_agency == "USAID",
+           indicator %in% c("PMTCT_EID", "PMTCT_HEI_POS"),
+           standardizeddisaggregate %in% c("Total Numerator")) %>% 
+    clean_indicator() %>% 
+    group_by(fiscal_year, indicator,) %>% 
+    summarise(across(c(cumulative), sum, na.rm = TRUE), .groups = "drop") %>% 
+    spread(indicator, cumulative) %>% 
+    mutate(hiv_free = PMTCT_EID - PMTCT_HEI_POS)
+
+  hiv_free_15_20 <- 
+    df_arch %>% 
+    filter(funding_agency == "USAID",
+           indicator %in% c("PMTCT_EID", "PMTCT_HEI_POS", "PMTCT_EID_POS"),
+           standardizeddisaggregate %in% c("Total Numerator")) %>% 
+    clean_indicator() %>% 
+    group_by(fiscal_year, indicator) %>% 
+    summarise(across(c(cumulative), sum, na.rm = TRUE), .groups = "drop") %>% 
+    spread(indicator, cumulative) %>% 
+    rowwise() %>% 
+    mutate(hiv_free = PMTCT_EID - sum(PMTCT_HEI_POS, PMTCT_EID_POS, na.rm = TRUE)) %>% 
+    ungroup()
+ 
+  hiv_free_all <- 
+    bind_rows(hiv_free_15_20, hiv_free_21_23) 
+  
+  
+```
+
+```{r pmtct_eid_table, echo=FALSE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
+hiv_free_all %>% 
+  gt() %>% 
+  fmt_number(columns = c(2:5), 
+             decimals = 0) %>% 
+  sub_missing(missing_text = ".",
+    ) %>% 
+ grand_summary_rows(
+    columns = c(5),
+    fns = list(
+      Overall = ~ sum(., na.rm = T)
+    ),
+    formatter = fmt_number,
+    decimals = 0
+  ) %>% 
+  tab_header(
+    title = glue("TP #11: Infants born HIV free to mothers living with HIV" %>% toupper())) %>% 
+  gt_theme_nytimes() 
+
+```
+
 ### TP #14:  CX_CA
 
 ```{r prep_cxca_df, echo=FALSE, include = FALSE, warning=FALSE, message=FALSE}
@@ -1073,6 +1131,55 @@ ovc_serv_qc %>%
 
 ```
 
+```{r ovc_serv_agency_qc, echo=TRUE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
+
+ovc_serv_agency_qc <- df_final %>%
+   bind_rows(df_final %>% mutate(funding_agency = "PEPFAR")) %>% 
+  filter(indicator %in% c("OVC_SERV"),
+         standardizeddisaggregate %in% c("Total Numerator"),
+         funding_agency %in% c("PEPFAR", "USAID"),
+         fiscal_year == metadata_msd$curr_fy)%>%
+  mutate(ou_qc = case_when(operatingunit == "Nigeria" ~ "Nigeria",
+                           #operatingunit == "Tanzania" ~ "Tanzania",
+                           TRUE ~ "All other OUs")) %>% 
+  group_by(fiscal_year, indicator, funding_agency, ou_qc) %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
+  ungroup() %>% 
+  mutate(fiscal_year = as.character(fiscal_year)) %>% 
+  pivot_wider(names_from = "funding_agency", values_from = "cumulative") %>% 
+  mutate(usaid_share = `USAID` / `PEPFAR`)
+```
+
+```{r ovc_serv_agency_tbl, echo=FALSE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
+ovc_serv_agency_qc %>% 
+  #filter(`OU category` != "Total") %>% 
+  gt::gt() %>% 
+  fmt_number(columns = c(4,5), 
+             decimals = 0) %>% 
+    fmt_percent(columns = c(6), 
+             decimals = 0) %>% 
+  grand_summary_rows(
+    columns =  c(4,5),
+    fns = list(
+      Overall = ~ sum(., na.rm = T)
+    ),
+    formatter = fmt_number,
+    decimals = 0
+  ) %>% 
+  grand_summary_rows(
+    columns =  c(6),
+    fns = list(
+      Overall = ~ sum(., na.rm = T)
+    ),
+    formatter = fmt_number,
+    decimals = 0
+  ) %>% 
+  tab_header(
+    title = glue("TP #22: OVC_SERV USAID Share" %>% toupper())) %>% 
+  gt_theme_nytimes() 
+
+```
+
 
 ```{r ovc_hivstat_qc, echo=TRUE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
 
@@ -1175,6 +1282,7 @@ qc_gend_lp %>%
 ```
 
 
+
 ### TP #24: OVC+DREAMS PREVENTION
 ```{r ovc_preventative_qc, echo=TRUE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
 
@@ -1214,5 +1322,59 @@ ovc_prev_qc %>%
 
 ```
 
-
 ------------------------------------------------------------------------
+
+## **Partnerships**
+
+### TP #53: Local Share share of HTS and TX
+
+```{r hts_lp_qc, echo=TRUE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
+
+df_prep_hts_qc <- df_final %>%
+    left_join(df_partner, by = c("mech_code")) %>%
+    filter(funding_agency == "USAID",
+           indicator == "HTS_TST",
+           standardizeddisaggregate == "Total Numerator") %>%
+    mutate(ou_qc = case_when(operatingunit == "Nigeria" ~ "Nigeria",
+                          # operatingunit == "Tanzania" ~ "Tanzania",
+                           TRUE ~ "All other OUs")) %>%
+  group_by(funding_agency, fiscal_year, indicator, partner_type, ou_qc) %>%
+  summarise(across(cumulative, sum, na.rm = TRUE)) %>%
+  ungroup() %>%
+  filter(partner_type != "TBD") %>%
+  pivot_wider(names_from = partner_type, values_from = cumulative) %>%
+  group_by(fiscal_year) %>%
+  mutate(Total = International + Local,
+         share = Local / Total)  %>%
+  pivot_longer(cols = International:Total, names_to = "partner_type") %>% 
+  ungroup()
+
+qc_hts_lp <- df_prep_hts_qc %>% 
+  filter(partner_type %in% c("Local", "Total"), fiscal_year == metadata_msd$curr_fy) %>% 
+  pivot_wider(names_from = "partner_type", values_from = "value")
+```
+
+```{r hts_lp_tbl, echo=FALSE, include = TRUE, warning=FALSE, message=FALSE, fig.align = 'left'}
+
+qc_hts_lp %>% 
+  mutate(fiscal_year = as.character(fiscal_year)) %>% 
+  relocate(share, .after = Total) %>% 
+  gt() %>% 
+  fmt_number(columns = c(5,6), 
+             decimals = 0) %>% 
+  fmt_percent(columns = 7, 
+              decimals = 1) %>% 
+  grand_summary_rows(
+    columns = c(5,6),
+    fns = list(
+      Overall = ~ sum(., na.rm = T)
+    ),
+    formatter = fmt_number,
+    decimals = 0
+  ) %>% 
+  tab_header(
+    title = glue("TP #53: Local Partner HTS share" %>% toupper())) %>% 
+  gt_theme_nytimes() 
+
+```
+
