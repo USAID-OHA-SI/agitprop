@@ -164,6 +164,26 @@ TX_U15<-df_bind %>%
   arrange(OU_group) %>% 
   prinf()
 
+#TX <15 all agencies - filter out CS
+TX_U15_allagency<-df_bind %>% 
+  mutate(OU_group=case_when(
+    operatingunit=="Nigeria" ~ "Nigeria",
+    TRUE ~ "All Other OUs"
+  )) %>% 
+  filter(indicator=="TX_CURR",
+         indicatortype != "CS",
+         standardizeddisaggregate %in% c("Age/Sex/HIVStatus", "Age Aggregated/Sex/HIVStatus", 
+                                         "MostCompleteAgeDisagg"),
+         # funding_agency=="USAID",
+         fiscal_year %in% c("2021","2022","2023","2024")) %>% 
+  group_by(fiscal_year,OU_group,indicator,trendscoarse) %>% 
+  summarize_at(vars(cumulative),sum,na.rm=TRUE) %>% 
+  spread(trendscoarse,cumulative) %>% 
+  mutate(total = coalesce(`<15`, 0) + coalesce(`15+`, 0) + coalesce(`Unknown Age`, 0),
+         prct_u15=(`<15`/total)*100) %>% 
+  arrange(OU_group) %>% 
+  prinf()
+
 
 
 TX_PVLS_U15<-df_bind %>% 
