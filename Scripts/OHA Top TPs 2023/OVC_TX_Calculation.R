@@ -77,22 +77,45 @@ df_psnu <- df_msd_psnu %>%
 
 # MUNGE -----------------------------------------------------------------
 
-#get psnus for OVC_HIVSTAT_D for USAID
-df_ovc <- df_psnu %>%
-   clean_indicator() %>% 
-  filter(indicator %in% c("OVC_HIVSTAT_D"),
-         standardizeddisaggregate %in% c("Total Denominator"),
-         fiscal_year == metadata_msd$curr_fy,
-         funding_agency == "USAID") %>%
-   group_by(fiscal_year, indicator, operatingunit, psnu) %>% 
-   summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
-  pivot_wider(names_from = "indicator", values_from = "cumulative") %>% 
-  filter(OVC_HIVSTAT_D > 0)
+#identify PSNUs that report OVC_SERV targets in FY23
+df_ovc_serv <- df_psnu %>%
+  clean_indicator() %>% 
+  filter(indicator %in% c("OVC_SERV"),
+         standardizeddisaggregate %in% c("Total Numerator", "Total Denominator"),
+         fiscal_year == metadata_msd$curr_fy) %>%
+  group_by(fiscal_year, indicator, operatingunit, psnu) %>% 
+  summarise(across(starts_with("targets"), sum, na.rm = T), .groups = "drop") %>% 
+  pivot_wider(names_from = "indicator", values_from = "targets") %>% 
+  filter(OVC_SERV > 0)
+
+nga_psnus <- df_ovc_serv %>% 
+  filter(operatingunit == "Nigeria") %>% 
+  count(psnu) %>% pull(psnu)
+
+all_other_psnus <- df_ovc_serv %>% 
+  filter(operatingunit != "Nigeria") %>% 
+  count(psnu) %>% pull(psnu)
+
+
+# #get psnus for OVC_HIVSTAT_D for USAID
+#   # FROM IVANA: we are using psnus by OVC_SERV targets reported across agencies
+# df_ovc <- df_psnu %>%
+#    clean_indicator() %>% 
+#   filter(indicator %in% c("OVC_HIVSTAT_D"),
+#          standardizeddisaggregate %in% c("Total Denominator"),
+#          fiscal_year == metadata_msd$curr_fy,
+#          funding_agency == "USAID") %>%
+#    group_by(fiscal_year, indicator, operatingunit, psnu) %>% 
+#    summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop") %>% 
+#   pivot_wider(names_from = "indicator", values_from = "cumulative") %>% 
+#   filter(OVC_HIVSTAT_D > 0)
 
 #get psnus for PEPFAR that report TX_CURR <15 (nigeria will not be included here)
 df_tx <- df_psnu %>%
   clean_indicator() %>% 
   filter(indicator %in% c("TX_CURR"),
+         operatingunit != "Nigeria",
+         psnu %in% all_other_psnus,
          standardizeddisaggregate %in% c("Age/Sex/HIVStatus"),
          fiscal_year == metadata_msd$curr_fy,
          trendscoarse == "<15") %>%
@@ -101,34 +124,34 @@ df_tx <- df_psnu %>%
   pivot_wider(names_from = "indicator", values_from = "cumulative") %>% 
   filter(TX_CURR > 0)
    
- #now, check the PSNU overlap and only keep PSNUs where both report results
-ovc_tx_psnu <- df_tx %>% 
-  inner_join(df_ovc) %>% 
-  count(psnu) %>% 
-  pull(psnu)
+#  #now, check the PSNU overlap and only keep PSNUs where both report results
+# ovc_tx_psnu <- df_tx %>% 
+#   inner_join(df_ovc) %>% 
+#   count(psnu) %>% 
+#   pull(psnu)
 
 
 #grab TX_CURR <15 for only these PSNUs
 tx_u15_val <- df_tx %>% 
-  filter(psnu %in% ovc_tx_psnu) %>% 
+  filter(operatingunit != "Nigeria") %>% 
   mutate(ou_qc = case_when(operatingunit == "Nigeria" ~ "Nigeria",
-                           #operatingunit == "Tanzania" ~ "Tanzania",
+                           operatingunit == "Tanzania" ~ "Tanzania",
                            TRUE ~ "All other OUs")) %>%
- #group_by(ou_qc) %>% 
-  mutate(total_tx = sum(TX_CURR)) %>% 
-  #count(ou_qc)
-  pull(total_tx) %>% unique()
+ group_by(ou_qc) %>% 
+  mutate(total_tx_u15 = sum(TX_CURR)) %>% 
+  ungroup() %>% 
+  count(ou_qc, total_tx_u15)  %>% 
+  select(-n)
   
-#now, let's grab OVC_HIVSTAT_POS on ART for the numerator (NGA will be in this one)
+#now, let's grab OVC_HIVSTAT_POS for the numerator (NGA will be in this one)
 df_psnu %>%
   clean_indicator() %>% 
   filter(indicator == "OVC_HIVSTAT_POS",
          fiscal_year == metadata_msd$curr_fy,
          standardizeddisaggregate == "Age/Sex/ReportedStatus",
-         otherdisaggregate == "Receiving ART",
-         funding_agency == "USAID") %>% 
+         target_age_2024 %in% c("<01","01-04", "05-09", "10-14")) %>% 
   mutate(ou_qc = case_when(operatingunit == "Nigeria" ~ "Nigeria",
-                           #operatingunit == "Tanzania" ~ "Tanzania",
+                           operatingunit == "Tanzania" ~ "Tanzania",
                            TRUE ~ "All other OUs")) %>%
-  group_by(fiscal_year, indicator, otherdisaggregate, ou_qc) %>% 
+  group_by(fiscal_year, indicator, ou_qc) %>% 
   summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop")
