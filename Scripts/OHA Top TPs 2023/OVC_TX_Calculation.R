@@ -20,6 +20,8 @@ library(glue)
 library(mindthegap)
 library(googledrive)
 library(googlesheets4)
+library(gt)
+library(gtExtras)
 
 
 # GLOBAL VARIABLES --------------------------------------------------------
@@ -141,10 +143,11 @@ tx_u15_val <- df_tx %>%
   mutate(total_tx_u15 = sum(TX_CURR)) %>% 
   ungroup() %>% 
   count(ou_qc, total_tx_u15)  %>% 
-  select(-n)
+  select(-n) %>% 
+  prinf()
   
 #now, let's grab OVC_HIVSTAT_POS for the numerator (NGA will be in this one)
-df_psnu %>%
+df_ovchivstat <- df_psnu %>%
   clean_indicator() %>% 
   filter(indicator == "OVC_HIVSTAT_POS",
          fiscal_year == metadata_msd$curr_fy,
@@ -155,3 +158,43 @@ df_psnu %>%
                            TRUE ~ "All other OUs")) %>%
   group_by(fiscal_year, indicator, ou_qc) %>% 
   summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop")
+
+# TABLES ---------------------------------------------------------------------
+
+df_ovchivstat %>% 
+  gt() %>% 
+  fmt_number(columns = c(4), 
+             decimals = 0) %>% 
+  # fmt_percent(columns = 7, 
+  #             decimals = 1) %>% 
+  grand_summary_rows(
+    columns = c(4),
+    fns = list(
+      Overall = ~ sum(., na.rm = T)
+    ),
+    formatter = fmt_number,
+    decimals = 0
+  ) %>% 
+  tab_header(
+    title = glue("TP #22: OVC HIVSTAT_POS <15" %>% toupper())) %>% 
+  gt_theme_nytimes() 
+
+tx_u15_val %>% 
+  gt() %>% 
+  fmt_number(columns = c(2), 
+             decimals = 0) %>% 
+  # fmt_percent(columns = 7, 
+  #             decimals = 1) %>% 
+  grand_summary_rows(
+    columns = c(2),
+    fns = list(
+      Overall = ~ sum(., na.rm = T)
+    ),
+    formatter = fmt_number,
+    decimals = 0
+  ) %>% 
+  tab_header(
+    title = glue("TP #22: TX_CURR <15 in OVC PSNUs" %>% toupper()),
+    subtitle = "Nigeria excluded") %>% 
+  gt_theme_nytimes() 
+  
