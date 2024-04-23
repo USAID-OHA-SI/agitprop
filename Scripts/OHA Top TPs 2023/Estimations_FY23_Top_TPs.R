@@ -181,7 +181,7 @@ TX_10to19_vls<-df_bind %>%
   mutate(vls = (N/D)*100) %>% 
   arrange(OU_group) %>% 
   prinf()
-  
+
 TX_10to19_vls_all<-df_bind %>% 
   filter(indicator=="TX_PVLS",
          standardizeddisaggregate %in% c("Age Aggregated/Sex/Indication/HIVStatus", "Age/Sex/Indication/HIVStatus", "Age Aggregated/Sex"),
@@ -291,5 +291,4 @@ TX_KP_USAID<-df_bind %>%
   arrange(OU_group) %>%
   prinf()
 
-  
 
