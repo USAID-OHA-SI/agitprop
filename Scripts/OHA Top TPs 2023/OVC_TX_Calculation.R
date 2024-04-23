@@ -89,7 +89,7 @@ df_ovc <- df_psnu %>%
   pivot_wider(names_from = "indicator", values_from = "cumulative") %>% 
   filter(OVC_HIVSTAT_D > 0)
 
-#get psnus for PEPFAR that report TX_CURR <15
+#get psnus for PEPFAR that report TX_CURR <15 (nigeria will not be included here)
 df_tx <- df_psnu %>%
   clean_indicator() %>% 
   filter(indicator %in% c("TX_CURR"),
@@ -102,7 +102,6 @@ df_tx <- df_psnu %>%
   filter(TX_CURR > 0)
    
  #now, check the PSNU overlap and only keep PSNUs where both report results
-
 ovc_tx_psnu <- df_tx %>% 
   inner_join(df_ovc) %>% 
   count(psnu) %>% 
@@ -110,7 +109,26 @@ ovc_tx_psnu <- df_tx %>%
 
 
 #grab TX_CURR <15 for only these PSNUs
-
-df_tx %>% 
-  filter(psnu %in% ovc_tx_psnu)
+tx_u15_val <- df_tx %>% 
+  filter(psnu %in% ovc_tx_psnu) %>% 
+  mutate(ou_qc = case_when(operatingunit == "Nigeria" ~ "Nigeria",
+                           #operatingunit == "Tanzania" ~ "Tanzania",
+                           TRUE ~ "All other OUs")) %>%
+ #group_by(ou_qc) %>% 
+  mutate(total_tx = sum(TX_CURR)) %>% 
+  #count(ou_qc)
+  pull(total_tx) %>% unique()
   
+#now, let's grab OVC_HIVSTAT_POS on ART for the numerator (NGA will be in this one)
+df_psnu %>%
+  clean_indicator() %>% 
+  filter(indicator == "OVC_HIVSTAT_POS",
+         fiscal_year == metadata_msd$curr_fy,
+         standardizeddisaggregate == "Age/Sex/ReportedStatus",
+         otherdisaggregate == "Receiving ART",
+         funding_agency == "USAID") %>% 
+  mutate(ou_qc = case_when(operatingunit == "Nigeria" ~ "Nigeria",
+                           #operatingunit == "Tanzania" ~ "Tanzania",
+                           TRUE ~ "All other OUs")) %>%
+  group_by(fiscal_year, indicator, otherdisaggregate, ou_qc) %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T), .groups = "drop")
