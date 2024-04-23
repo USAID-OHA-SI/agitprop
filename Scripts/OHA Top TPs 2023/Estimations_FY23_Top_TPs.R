@@ -54,19 +54,19 @@ df <- df_msd %>%
          !(operatingunit=="Tanzania" & fiscal_year=="2023")) %>% 
   select(-c(qtr1:qtr4)) %>% 
   rbind(df_nga_new)
-
-#Q4 TZA Daily Genie 
-df_TZA <- si_path() %>%
-  return_latest("Genie-OUByIMs-Tanzania-Daily-2024-02-07") %>%
-  read_psd()
-
-#exclude extra columns 
-df_msd_TZA <- df_TZA %>% 
-  select(-c(qtr1:qtr4)) 
-
-#bind TZA data to clean MSD w/ NGA file
-df_final <- df %>% 
-  rbind(df_msd_TZA)
+# 
+# #Q4 TZA Daily Genie 
+# df_TZA <- si_path() %>%
+#   return_latest("Genie-OUByIMs-Tanzania-Daily-2024-02-07") %>%
+#   read_psd()
+# 
+# #exclude extra columns 
+# df_msd_TZA <- df_TZA %>% 
+#   select(-c(qtr1:qtr4)) 
+# 
+# #bind TZA data to clean MSD w/ NGA file
+# df_final <- df %>% 
+#   rbind(df_msd_TZA)
 
 
 #run join code prior to this 
