@@ -39,14 +39,29 @@ ref_id <- "5ba96db8"
 # IMPORT ------------------------------------------------------------------
 
 #Cascade %
-df_unaids <- pull_unaids("HIV Test & Treat", pepfar_only = TRUE)
+df_unaids <- pull_testtreat(pepfar_only = TRUE)
 
 #PLHIV number
-df_est <- pull_unaids("HIV Estimates", pepfar_only = TRUE)
+df_est <- pull_estimates(pepfar_only = TRUE)
+
+#PEPFAR select list
+# pepfar_cntry <- pepfar_country_list %>% 
+#   filter(str_detect(operatingunit, "Region", negate = TRUE)) %>% 
+#   pull(country)
+# 
+# pepfar_cntry <- pepfar_country_list %>% 
+#   distinct(country) %>% pull()
+
+#select only philippines from Asia region + WAR
+
+asia_ou_filter_out <- pepfar_country_list %>% 
+  filter(operatingunit == "Asia Region" & country != "Philippines", negate = TRUE) %>% 
+  pull(country)
 
 #PEPFAR select list
 pepfar_cntry <- pepfar_country_list %>% 
-  filter(str_detect(operatingunit, "Region", negate = TRUE)) %>% 
+  filter(str_detect(operatingunit, "Western Hemisphere Region", negate = TRUE)) %>% 
+  filter(country %ni% asia_ou_filter_out) %>%
   pull(country)
 
 
@@ -127,18 +142,18 @@ df_viz %>%
   ggplot(aes(value, country, color = dot_color)) +
   geom_vline(xintercept = goal, linetype = "dashed") + 
   geom_linerange(aes(xmin = gap_bar, xmax = goal), color = "gray90",
-                 size = 2.5, na.rm = TRUE) +
-  geom_point(size = 4, na.rm = TRUE) +
+                 size = 2, na.rm = TRUE) +
+  geom_point(size = 3, na.rm = TRUE) +
   scale_y_reordered(limits = rev) +
   scale_x_continuous(labels=function(x) paste0(x,"%")) +
   scale_color_identity() +
   facet_grid(grouping~indicator, scales = "free_y", space = "free_y") +
   labs(x = NULL, y = NULL, color = NULL,
-       title = glue("AS OF 2022, {epi_ctrl_cnt} PEPFAR COUNTRY HAS ACHIEVED THE UNAIDS' 2030 FAST TRACK TARGETS"),
-       caption = glue("Source: {source_note}
+       title = glue("AS OF {df_viz$year %>% unique()}, {epi_ctrl_cnt} PEPFAR COUNTRIES HAVE ACHIEVED THE UNAIDS' 2030 FAST TRACK TARGETS"),
+       caption = glue("{source_note}
                        Ref id: {ref_id}")) +
   si_style_xgrid() +
   theme(strip.text.y = element_blank(),
         panel.spacing = unit(.5, "lines"))
 
-si_save("Graphics/06_epi_ann-95s_2022_update.svg")
+si_save("Graphics/06_epi_ann-95s_2023_update.svg")
