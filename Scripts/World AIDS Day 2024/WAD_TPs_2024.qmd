@@ -1,0 +1,366 @@
+---
+title: "2024 World AIDS Day TPs"
+author: "Karishma Srikanth"
+format: html
+editor: visual
+execute:
+  echo: false
+  output: false
+---
+
+# Purpose
+
+Last Updated: `r lubridate::today()`
+
+Previously used for: Data for World AIDS Day 2023, 2023 OHA Top Talking Points, PPR
+
+Audience: The public, Agency stakeholders, partners, HIV/AIDS stakeholders/activists, the development community
+
+Purpose: The purpose of this document is to create one place for the data points we will be sharing on World AIDS Day. On World AIDS Day we will be sharing (not a complete list): 
+
+-   an Agency notice, 
+
+-   an Agency-wide social media toolkit (and a USAID GH specific toolkit), 
+
+-   a press statement from A/AID,
+
+-   and we will be updating our OHA webpage on World AIDS Day [last year's version here](https://www.usaid.gov/world-aids-day).
+
+```{r libraries}
+
+knitr::opts_chunk$set(echo = FALSE)
+
+  library(tidyverse)
+  library(glitr)
+  library(glamr)
+  library(gophr)
+  library(extrafont)
+  library(scales)
+  library(tidytext)
+  library(patchwork)
+  library(ggtext)
+  library(glue)
+  library(janitor)
+  library(lubridate)
+  library(googlesheets4)
+```
+
+```{r load}
+
+# SI specific paths/functions  
+load_secrets()
+
+# MSD
+filepath <- si_path() %>% 
+  return_latest("MER_Structured_Datasets_OU_IM_FY22")
+
+# Grab metadata
+metadata <- get_metadata(filepath) 
+
+# MSD PREP --------------------------------------
+
+#read MSD
+df_msd <- read_psd(filepath)
+
+
+#LOCAL PARTNER DATA PREP --------------------------------------------------------
+
+#Read in the google sheet hyperfile with local partner
+sheet_id <- "1tGk1TR8l3WacR8qMIK0AQvFynABijAaLHeIctE1nUoM"
+
+df_partner <- read_sheet(sheet_id, sheet = "MechID-PartnerType") %>% 
+  janitor::clean_names() %>% 
+  select(mechanism_id, pepfar_local_partner_status) %>% 
+  rename(mech_code = mechanism_id,
+         partner_type = pepfar_local_partner_status) %>% 
+  mutate(mech_code = as.character(mech_code))
+         # ,
+         # partner_type = case_when(partner_type == "Regional" ~ "Local",
+         #                          partner_type == "TBD Local" ~ "Local", TRUE ~ partner_type))
+
+
+# DREAMS DATA PREP --------------------------------------------------------------
+
+# Google sheet ID for DREAMS DSNU list
+dsnu_g_id <- "1oJZyXtvExN9UoQ6krFHERMoXEgCQgsHLf0tVIbmsi_o"
+
+#MSD path
+dsnu_msd_path <- si_path() %>% 
+  return_latest("PSNU_IM_DREAMS_FY22")
+
+#import DREAMS DSNU crosswalk
+#recommend adding psnu_uids to this sheet
+dsnu_list <- read_sheet(dsnu_g_id, sheet = "DSNU-Agency-All-FY") %>% 
+  janitor::clean_names() %>% 
+  select(ou, cop22_psnu, dreams_dsnu, cop_23_fy24_implementing_agency)
+
+#rename names
+names(dsnu_list)<-c("operatingunit", "psnu", "dsnu", "agencies_FY24")
+
+#import msd and filter to current year
+df_msd_dreams <- read_psd(dsnu_msd_path) %>% 
+  filter(fiscal_year == metadata$curr_fy)
+
+msd_dsnu_xwalk <- df_msd_dreams %>% 
+  count(operatingunit, operatingunituid, psnu, psnuuid, cop22_psnu, cop22_psnuuid, dsnu, dsnuuid) %>% 
+  mutate(raised_lvl = ifelse(psnuuid != cop22_psnuuid, TRUE, FALSE)) %>% 
+  mutate(dsnu_new = case_when(operatingunit != "Uganda" & raised_lvl == TRUE ~ cop22_psnu,
+                              TRUE ~ dsnu),
+         dsnuuid_new = case_when(operatingunit != "Uganda" & raised_lvl == TRUE ~ cop22_psnuuid,
+                                 TRUE ~ dsnuuid))
+
+#join the new xwalk back to msd and then join the internal dsnu list to the msd
+df_dreams_all <- df_msd_dreams %>% 
+  left_join(msd_dsnu_xwalk) %>% 
+  left_join(dsnu_list, by=c("operatingunit", "cop22_psnu" = "psnu", "dsnu_new"= "dsnu"))
+
+# HRH -----------------------------------------------------------------------
+
+df_hrh <- si_path() %>% 
+  return_latest("HRH") %>% 
+  read_psd()
+
+```
+
+```{r functions}
+# FUNCTIONS --------------------------------------------------------------------
+
+#clean number function
+clean_number <- function(x, digits = 0){
+  dplyr::case_when(x >= 1e9 ~ glue("{round(x/1e9, digits)} billion"),
+                   x >= 1e6 ~ glue("{round(x/1e6, digits)} million"),
+                   x >= 1e3 ~ glue("{round(x/1e3, digits)} thousand"),
+                   TRUE ~ glue("{x}"))
+}
+
+
+#LP Function
+#result_type = value or share
+grab_lp_results_clean <- function(df, indic, result_type) {
+  
+  df_munge <- suppressMessages(df %>% 
+                                 # bind_rows(df_arch) %>%
+                                 left_join(df_partner, by = c("mech_code")) %>%
+                                 filter(funding_agency == "USAID",
+                                        indicator == indic,
+                                        standardizeddisaggregate == "Total Numerator") %>% 
+                                 group_by(funding_agency, fiscal_year, indicator, partner_type) %>% 
+                                 summarise(across(cumulative, sum, na.rm = TRUE)) %>%
+                                 ungroup() %>% 
+                                 filter(partner_type != "TBD") %>%
+                                 #filter(fiscal_year != 2022) %>%
+                                 pivot_wider(names_from = partner_type, values_from = cumulative) %>%
+                                 group_by(fiscal_year) %>%
+                                 mutate(Total = International + Local,
+                                        share = Local / Total)  %>%
+                                 pivot_longer(cols = International:Total, names_to = "partner_type"))
+  
+  title_info_lp <- df_munge %>% 
+    filter(partner_type == "Local", fiscal_year == metadata$curr_fy) %>% 
+    select(fiscal_year, indicator, value, share) %>% 
+    mutate(
+      value = value %>% clean_number(1),#change to 1 if you want 1 decimal accuracy
+      share = percent(round(share, 2))) %>% 
+    pull(result_type)
+  
+  return(title_info_lp)
+}
+
+grab_lp_results <- function(df, indic, result_type) {
+  
+  df_munge <- suppressMessages(df %>% 
+                                 # bind_rows(df_arch) %>%
+                                 left_join(df_partner, by = c("mech_code")) %>%
+                                 filter(funding_agency == "USAID",
+                                        indicator == indic,
+                                        standardizeddisaggregate == "Total Numerator") %>% 
+                                 group_by(funding_agency, fiscal_year, indicator, partner_type) %>% 
+                                 summarise(across(cumulative, sum, na.rm = TRUE)) %>%
+                                 ungroup() %>% 
+                                 filter(partner_type != "TBD") %>%
+                                 #filter(fiscal_year != 2022) %>%
+                                 pivot_wider(names_from = partner_type, values_from = cumulative) %>%
+                                 group_by(fiscal_year) %>%
+                                 mutate(Total = International + Local,
+                                        share = Local / Total)  %>%
+                                 pivot_longer(cols = International:Total, names_to = "partner_type"))
+  
+  title_info_lp <- df_munge %>% 
+    filter(partner_type == "Local", fiscal_year == metadata$curr_fy) %>% 
+    select(fiscal_year, indicator, value, share) %>% 
+    mutate(
+      value = value,#change to 1 if you want 1 decimal accuracy
+      share = percent(round(share, 2))) %>% 
+    pull(result_type) 
+  
+  return(title_info_lp)
+}
+
+#key pops function clean
+pull_kp_clean <- function(df, indic) {
+  kp_val <- df %>%
+    filter(funding_agency == "USAID",
+           str_detect(standardizeddisaggregate, "KeyPop(?!\\/Status)"),
+           indicator %in% c("PrEP_NEW", "TX_CURR", "KP_PREV"),
+           fiscal_year == metadata$curr_fy) %>%
+    count(indicator, wt = cumulative) %>%
+    mutate(n = clean_number(n)) %>% 
+    pivot_wider(names_from = indicator, values_from = "n") %>% 
+    pull(indic)
+  
+  return(kp_val)
+}
+
+#key pops function complete
+pull_kp <- function(df, indic) {
+  kp_val <- df %>%
+    filter(funding_agency == "USAID",
+           str_detect(standardizeddisaggregate, "KeyPop(?!\\/Status)"),
+           indicator %in% c("PrEP_NEW", "TX_CURR", "KP_PREV"),
+           fiscal_year == metadata$curr_fy) %>%
+    count(indicator, wt = cumulative) %>%
+    pivot_wider(names_from = indicator, values_from = "n") %>% 
+    pull(indic) 
+  
+  return(kp_val)
+}
+
+```
+
+## Prevention Talking Points
+
+```{r prep_tp}
+#| echo: false
+
+
+prep_val <- df_msd %>%
+  filter(funding_agency == "USAID",
+         standardizeddisaggregate %in% c("Total Numerator"),
+         indicator %in% c("PrEP_NEW"),
+         fiscal_year == metadata$curr_fy) %>%
+  summarise(across(starts_with("cumulative"), sum, na.rm = T)) %>% 
+  pull(cumulative)
+
+prep_val_clean <- prep_val %>%
+  clean_number(2)
+
+
+prep_val_country <- df_msd %>% 
+  filter(funding_agency == "USAID",
+         standardizeddisaggregate %in% c("Total Numerator"),
+         indicator %in% c("PrEP_NEW"),
+         fiscal_year == metadata$curr_fy) %>%
+  distinct(country) %>% nrow()
+
+lp_prep_val <- grab_lp_results(df_msd, "PrEP_NEW", "value") 
+lp_prep_share <- grab_lp_results(df_msd, "PrEP_NEW", "share")
+
+#kp prep
+kp_prep_val_clean <- pull_kp_clean(df_msd, "PrEP_NEW")
+kp_prep_val <- pull_kp(df_msd, "PrEP_NEW")
+
+#AGYW prep
+prep_agyw_val <- df_msd %>%
+  filter(funding_agency == "USAID",
+         standardizeddisaggregate %in% c("Age/Sex"),
+         indicator %in% c("PrEP_NEW"),
+         fiscal_year == metadata$curr_fy,
+         sex == "Female",
+         age_2019 %in% c("10-14","15-19", "20-24")
+  ) %>%
+  summarise(across(starts_with("cumulative"), sum, na.rm = T)) %>% 
+  pull(cumulative)
+
+prep_agyw_val_clean <- df_msd %>%
+  filter(funding_agency == "USAID",
+         standardizeddisaggregate %in% c("Age/Sex"),
+         indicator %in% c("PrEP_NEW"),
+         fiscal_year == metadata$curr_fy,
+         sex == "Female",
+         age_2019 %in% c("10-14","15-19", "20-24")
+          ) %>%
+  summarise(across(starts_with("cumulative"), sum, na.rm = T)) %>% 
+  mutate(cumulative = clean_number(cumulative, 0)) %>%
+  pull(cumulative)
+
+
+```
+
+-   USAID, through PEPFAR, is working towards the UNAIDS goal of having ten million people on pre-exposure prophylaxis (or PrEP, an HIV prevention medication) globally by 2025. In **`r metadata$curr_fy`**, USAID supported more than **`r prep_val_clean` \[`r comma(prep_val)`\]** across **`r prep_val_country`** countries to start PrEP for HIV prevention. USAID’s local partners supported almost **`r clean_number(lp_prep_val)` \[`r comma(lp_prep_val)`\]** of those people, representing **`r lp_prep_share`** of all USAID-supported people starting PrEP. (#5 in top TPs)
+
+-   USAID supported more than **`r kp_prep_val_clean` \[`r comma(kp_prep_val)`\]** people within key populations and over **`r prep_agyw_val_clean` \[`r comma(prep_agyw_val)`\]** adolescent girls and young women (AGYW) aged 15-24 years to start PrEP in 2023, reducing their risk of contracting HIV. Together, key populations and AGYW constitute more than half of all USAID-supported people who started on PrEP. (#17 in top TPs)
+
+## DREAMS Talking Points
+
+```{r dreams}
+
+# DREAMS ----------------------------------------------------------
+
+#For total DREAMS programming, use all 4 disaggs + ages 10-29
+viz_package <- df_dreams_all %>%
+  filter(indicator=="AGYW_PREV",
+         standardizeddisaggregate %in% c("Age/Sex/Time/Complete+",
+                                         "Age/Sex/Time/Complete",
+                                         "Age/Sex/Time/Started",
+                                         "Age/Sex/Time/Incomplete"),
+         numeratordenom=="D",
+         age_2019 %in% c("10-14","15-19","20-24","25-29"),
+         sex=="Female")
+
+#service type disagg
+viz_service<- df_dreams_all %>% filter(indicator=="AGYW_PREV", 
+                                       standardizeddisaggregate %in% c("ComprehensiveEconomicStrengthening",
+                                                                       "EducationSupport"),
+                                       numeratordenom=="D")
+
+#create shares by USAID and non-USAID contributing DSNUs
+dreams_overall_val <- viz_package %>% 
+  mutate(usaid_dsnu = ifelse(str_detect(agencies_FY24, "USAID"), "USAID", "non-USAID")) %>% 
+  group_by(indicator, fiscal_year, usaid_dsnu) %>% 
+  summarize(across(cumulative, \(x) sum(x, na.rm = TRUE)),.groups="drop") %>% 
+  pivot_wider(names_from = "usaid_dsnu", values_from = 'cumulative') %>% 
+  mutate(total = USAID + `non-USAID`,
+         usaid_share = USAID/total) %>% 
+  pull(USAID) 
+
+dreams_overall_val_clean <- dreams_overall_val %>% 
+  clean_number(1)
+```
+
+```{r dreams_hrh}
+
+dreams_mentors <- df_hrh %>% 
+  filter(str_detect(employment_title, "DREAMS Mentor"),
+         funding_agency == "USAID",
+         fiscal_year == metadata$curr_fy) %>% 
+  group_by(fiscal_year, funding_agency, employment_title) %>% 
+  summarize(across(individual_count, \(x) sum(x, na.rm = TRUE)),.groups="drop") %>% 
+  pull(individual_count) 
+
+dreams_mentors_clean <- dreams_mentors %>% 
+  clean_number(1)
+```
+
+-   As the lead PEPFAR agency implementing DREAMS, USAID is proud of our contributions to decrease new HIV infections among adolescent girls and young women (AGYW) across the globe over the last decade.
+
+-   For the past decade, USAID helped lead the DREAMS program to decrease HIV risk for adolescent girls and young women by partnering with community leaders, parents, schools, governments, and the AGYW themselves. USAID thanks all our DREAMS collaborators and partners!
+
+-   Since 2014, USAID has worked with partner countries and across government sectors - including education, health, social welfare, and vocational training – to help lead the PEPFAR DREAMS program. We are proud to work together to create an AIDS-free future for adolescent girls and young women through DREAMS.
+
+-   In FY24,**`r dreams_overall_val_clean` \[`r comma(dreams_overall_val)`\]** AGYW aged 10-29 years were provided with DREAMS HIV prevention services in districts where USAID has a presence. Services are tailored to AGYW and  include education support, financial literacy, links to employment, health services, and effective parenting courses for parents/caregivers and their adolescent girls.
+
+-   In FY24, USAID funded more than **`r dreams_mentors_clean` \[`r comma(dreams_mentors)`\]** DREAMS mentors to deliver HIV prevention services in a safe and supportive environment for AGYW. These mentors play a critical role in health service delivery and linking youth to other platforms including education, civic engagement, and economic opportunities in support of USAID’s work with host countries to strengthen systems
+
+## Local Partner Talking Points
+
+```{r local_partner}
+
+hts_lp_value_clean <- grab_lp_results_clean(df_msd, "HTS_TST", "value")
+hts_lp_value <- grab_lp_results(df_msd, "HTS_TST", "value")
+
+txcurr_lp_value_clean <- grab_lp_results_clean(df_msd, "TX_CURR", "value")
+txcurr_lp_value <- grab_lp_results(df_msd, "TX_CURR", "value")
+txcurr_lp_share <- grab_lp_results(df_msd, "TX_CURR", "share")
+```
+
+-   Local partners are on the forefront of the HIV response. During **`r metadata$curr_fy_lab`**, local partners helped more than **`r hts_lp_value_clean` \[`r comma(hts_lp_value)`\]** learn their HIV status and provided over **`r txcurr_lp_value_clean` \[`r comma(txcurr_lp_value)`\]** people with life-saving HIV medication, representing more than **`r txcurr_lp_share`** of all USAID-supported people living with HIV. (#53 in top TPs)
