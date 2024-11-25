@@ -1,0 +1,425 @@
+---
+title: "2024 WAD TPs - QC"
+format: html
+editor: visual
+---
+
+# Purpose
+
+Last Updated: `r lubridate::today()`
+
+Previously used for: Data for World AIDS Day 2023, 2023 OHA Top Talking Points, PPR
+
+Audience: The public, Agency stakeholders, partners, HIV/AIDS stakeholders/activists, the development community
+
+Purpose: The purpose of this document is to create one place for the data points we will be sharing on World AIDS Day. On World AIDS Day we will be sharing (not a complete list): 
+
+-   an Agency notice, 
+
+-   an Agency-wide social media toolkit (and a USAID GH specific toolkit), 
+
+-   a press statement from A/AID,
+
+-   and we will be updating our OHA webpage on World AIDS Day [last year's version here](https://www.usaid.gov/world-aids-day).
+
+```{r libraries}
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
+
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+  library(tidyverse)
+  library(glitr)
+  library(glamr)
+  library(gophr)
+  library(extrafont)
+  library(scales)
+  library(tidytext)
+  library(patchwork)
+  library(ggtext)
+  library(glue)
+  library(janitor)
+  library(lubridate)
+  library(googlesheets4)
+  library(gt)
+  library(gtExtras)
+
+```
+
+```{r load}
+
+# SI specific paths/functions  
+load_secrets()
+
+# MSD
+filepath <- si_path() %>% 
+  return_latest("MER_Structured_Datasets_OU_IM_FY22")
+
+# Grab metadata
+metadata <- get_metadata(filepath) 
+
+# MSD PREP --------------------------------------
+
+#read MSD
+df_msd <- read_psd(filepath)
+
+
+#LOCAL PARTNER DATA PREP --------------------------------------------------------
+
+#Read in the google sheet hyperfile with local partner
+sheet_id <- "1tGk1TR8l3WacR8qMIK0AQvFynABijAaLHeIctE1nUoM"
+
+df_partner <- read_sheet(sheet_id, sheet = "MechID-PartnerType") %>% 
+  janitor::clean_names() %>% 
+  select(mechanism_id, pepfar_local_partner_status) %>% 
+  rename(mech_code = mechanism_id,
+         partner_type = pepfar_local_partner_status) %>% 
+  mutate(mech_code = as.character(mech_code))
+         # ,
+         # partner_type = case_when(partner_type == "Regional" ~ "Local",
+         #                          partner_type == "TBD Local" ~ "Local", TRUE ~ partner_type))
+
+
+# DREAMS DATA PREP --------------------------------------------------------------
+
+# Google sheet ID for DREAMS DSNU list
+dsnu_g_id <- "1oJZyXtvExN9UoQ6krFHERMoXEgCQgsHLf0tVIbmsi_o"
+
+#MSD path
+dsnu_msd_path <- si_path() %>% 
+  return_latest("PSNU_IM_DREAMS_FY22")
+
+#import DREAMS DSNU crosswalk
+#recommend adding psnu_uids to this sheet
+dsnu_list <- read_sheet(dsnu_g_id, sheet = "DSNU-Agency-All-FY") %>% 
+  janitor::clean_names() %>% 
+  select(ou, cop22_psnu, dreams_dsnu, cop_23_fy24_implementing_agency)
+
+#rename names
+names(dsnu_list)<-c("operatingunit", "psnu", "dsnu", "agencies_FY24")
+
+#import msd and filter to current year
+df_msd_dreams <- read_psd(dsnu_msd_path) %>% 
+  filter(fiscal_year == metadata$curr_fy)
+
+msd_dsnu_xwalk <- df_msd_dreams %>% 
+  count(operatingunit, operatingunituid, psnu, psnuuid, cop22_psnu, cop22_psnuuid, dsnu, dsnuuid) %>% 
+  mutate(raised_lvl = ifelse(psnuuid != cop22_psnuuid, TRUE, FALSE)) %>% 
+  mutate(dsnu_new = case_when(operatingunit != "Uganda" & raised_lvl == TRUE ~ cop22_psnu,
+                              TRUE ~ dsnu),
+         dsnuuid_new = case_when(operatingunit != "Uganda" & raised_lvl == TRUE ~ cop22_psnuuid,
+                                 TRUE ~ dsnuuid))
+
+#join the new xwalk back to msd and then join the internal dsnu list to the msd
+df_dreams_all <- df_msd_dreams %>% 
+  left_join(msd_dsnu_xwalk) %>% 
+  left_join(dsnu_list, by=c("operatingunit", "cop22_psnu" = "psnu", "dsnu_new"= "dsnu"))
+
+# HRH -----------------------------------------------------------------------
+
+df_hrh <- si_path() %>% 
+  return_latest("HRH") %>% 
+  read_psd()
+
+```
+
+```{r functions}
+# FUNCTIONS --------------------------------------------------------------------
+
+#clean number function
+clean_number <- function(x, digits = 0){
+  dplyr::case_when(x >= 1e9 ~ glue("{round(x/1e9, digits)} billion"),
+                   x >= 1e6 ~ glue("{round(x/1e6, digits)} million"),
+                   x >= 1e3 ~ glue("{round(x/1e3, digits)} thousand"),
+                   TRUE ~ glue("{x}"))
+}
+
+
+#LP Function
+#result_type = value or share
+grab_lp_results_clean <- function(df, indic, result_type) {
+  
+  df_munge <- suppressMessages(df %>% 
+                                 # bind_rows(df_arch) %>%
+                                 left_join(df_partner, by = c("mech_code")) %>%
+                                 filter(funding_agency == "USAID",
+                                        indicator == indic,
+                                        standardizeddisaggregate == "Total Numerator") %>% 
+                                 group_by(funding_agency, fiscal_year, indicator, partner_type) %>% 
+                                 summarise(across(cumulative, sum, na.rm = TRUE)) %>%
+                                 ungroup() %>% 
+                                 filter(partner_type != "TBD") %>%
+                                 #filter(fiscal_year != 2022) %>%
+                                 pivot_wider(names_from = partner_type, values_from = cumulative) %>%
+                                 group_by(fiscal_year) %>%
+                                 mutate(Total = International + Local,
+                                        share = Local / Total)  %>%
+                                 pivot_longer(cols = International:Total, names_to = "partner_type"))
+  
+  title_info_lp <- df_munge %>% 
+    filter(partner_type == "Local", fiscal_year == metadata$curr_fy) %>% 
+    select(fiscal_year, indicator, value, share) %>% 
+    mutate(
+      value = value %>% clean_number(1),#change to 1 if you want 1 decimal accuracy
+      share = percent(round(share, 2))) %>% 
+    pull(result_type)
+  
+  return(title_info_lp)
+}
+
+grab_lp_results <- function(df, indic, result_type) {
+  
+  df_munge <- suppressMessages(df %>% 
+                                 # bind_rows(df_arch) %>%
+                                 left_join(df_partner, by = c("mech_code")) %>%
+                                 filter(funding_agency == "USAID",
+                                        indicator == indic,
+                                        standardizeddisaggregate == "Total Numerator") %>% 
+                                 group_by(funding_agency, fiscal_year, indicator, partner_type) %>% 
+                                 summarise(across(cumulative, sum, na.rm = TRUE)) %>%
+                                 ungroup() %>% 
+                                 filter(partner_type != "TBD") %>%
+                                 #filter(fiscal_year != 2022) %>%
+                                 pivot_wider(names_from = partner_type, values_from = cumulative) %>%
+                                 group_by(fiscal_year) %>%
+                                 mutate(Total = International + Local,
+                                        share = Local / Total)  %>%
+                                 pivot_longer(cols = International:Total, names_to = "partner_type"))
+  
+  title_info_lp <- df_munge %>% 
+    filter(partner_type == "Local", fiscal_year == metadata$curr_fy) %>% 
+    select(fiscal_year, indicator, value, share) %>% 
+    mutate(
+      value = value,#change to 1 if you want 1 decimal accuracy
+      share = percent(round(share, 2))) %>% 
+    pull(result_type) 
+  
+  return(title_info_lp)
+}
+
+#key pops function clean
+pull_kp_clean <- function(df, indic) {
+  kp_val <- df %>%
+    filter(funding_agency == "USAID",
+           str_detect(standardizeddisaggregate, "KeyPop(?!\\/Status)"),
+           indicator %in% c("PrEP_NEW", "TX_CURR", "KP_PREV"),
+           fiscal_year == metadata$curr_fy) %>%
+    count(indicator, wt = cumulative) %>%
+    mutate(n = clean_number(n)) %>% 
+    pivot_wider(names_from = indicator, values_from = "n") %>% 
+    pull(indic)
+  
+  return(kp_val)
+}
+
+#key pops function complete
+pull_kp <- function(df, indic) {
+  kp_val <- df %>%
+    filter(funding_agency == "USAID",
+           str_detect(standardizeddisaggregate, "KeyPop(?!\\/Status)"),
+           indicator %in% c("PrEP_NEW", "TX_CURR", "KP_PREV"),
+           fiscal_year == metadata$curr_fy) %>%
+    count(indicator, wt = cumulative) %>%
+    pivot_wider(names_from = indicator, values_from = "n") %>% 
+    pull(indic) 
+  
+  return(kp_val)
+}
+
+```
+
+### TP #1a: FY24 PrEP_NEW
+
+```{r prep_tp}
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
+
+prep_val_qc <- df_msd %>%
+  filter(funding_agency == "USAID",
+         standardizeddisaggregate %in% c("Total Numerator"),
+         indicator %in% c("PrEP_NEW"),
+         fiscal_year == metadata$curr_fy) %>%
+  group_by(fiscal_year, funding_agency, indicator) %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T)) %>% 
+  ungroup()
+
+```
+```{r prep_tp_qc}
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
+
+prep_val_qc %>% 
+  #filter(`OU category` != "Total") %>% 
+  gt::gt() %>% 
+  fmt_number(columns = c(4), 
+             decimals = 0) %>% 
+  tab_header(
+    title = glue("TP #1: USAID PrEP_NEW FY24" %>% toupper())) %>% 
+  gt_theme_nytimes() 
+```
+
+### TP #1b: FY24 PrEP_NEW Countries
+
+```{r prep_country_tp}
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
+
+prep_country_qc <- df_msd %>% 
+  filter(funding_agency == "USAID",
+         standardizeddisaggregate %in% c("Total Numerator"),
+         indicator %in% c("PrEP_NEW"),
+         fiscal_year == metadata$curr_fy) %>%
+  distinct(fiscal_year, indicator, country)
+
+```
+
+```{r prep_country_tp_qc}
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
+
+prep_country_qc %>% 
+  select(country) %>%
+  mutate(id = row_number()) %>% 
+  gt() %>% 
+  tab_header(
+    title = glue("TP #1b: Number of USAID Countries reporting PrEP_NEW, FY24" %>% toupper())) %>% 
+  gt_theme_nytimes() 
+```
+
+```{r prep_lp_tp}
+#| echo: false
+#| include: true
+
+prep_lp_qc <- df_msd %>% 
+  left_join(df_partner, by = c("mech_code")) %>%
+  filter(funding_agency == "USAID",
+         indicator == "PrEP_NEW",
+         standardizeddisaggregate == "Total Numerator") %>%
+  group_by(funding_agency, fiscal_year, indicator, partner_type) %>% 
+  summarise(across(cumulative, sum, na.rm = TRUE)) %>%
+  ungroup() %>% 
+  filter(partner_type != "TBD") %>%
+  pivot_wider(names_from = partner_type, values_from = cumulative) %>%
+  group_by(fiscal_year) %>%
+  mutate(Total = International + Local,
+         share = Local / Total)  %>%
+  ungroup() %>% 
+  pivot_longer(cols = International:Total, names_to = "partner_type") %>% 
+  filter(partner_type == "Local", fiscal_year == metadata$curr_fy) %>% 
+    select(fiscal_year, funding_agency, partner_type, indicator, value, share)
+  
+```
+
+```{r prep_kp_tp}
+#| echo: false
+#| include: true
+
+kp_val_qc <- df_msd %>%
+    filter(funding_agency == "USAID",
+           str_detect(standardizeddisaggregate, "KeyPop(?!\\/Status)"),
+           indicator %in% c("PrEP_NEW"),
+           fiscal_year == metadata$curr_fy) %>%
+    count(indicator,fiscal_year,funding_agency, standardizeddisaggregate, wt = cumulative) %>%
+    pivot_wider(names_from = indicator, values_from = "n") 
+
+```
+
+```{r prep_agyw_tp}
+#| echo: false
+#| include: true
+
+
+#AGYW prep
+prep_agyw_val_qc <- df_msd %>%
+  filter(funding_agency == "USAID",
+         standardizeddisaggregate %in% c("Age/Sex"),
+         indicator %in% c("PrEP_NEW"),
+         fiscal_year == metadata$curr_fy,
+         sex == "Female",
+         age_2019 %in% c("10-14","15-19", "20-24")
+  ) %>%
+  group_by(fiscal_year, funding_agency, indicator) %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T)) %>% 
+  ungroup()
+
+```
+
+
+
+## DREAMS Talking Points
+
+```{r dreams}
+
+# DREAMS ----------------------------------------------------------
+
+#For total DREAMS programming, use all 4 disaggs + ages 10-29
+viz_package <- df_dreams_all %>%
+  filter(indicator=="AGYW_PREV",
+         standardizeddisaggregate %in% c("Age/Sex/Time/Complete+",
+                                         "Age/Sex/Time/Complete",
+                                         "Age/Sex/Time/Started",
+                                         "Age/Sex/Time/Incomplete"),
+         numeratordenom=="D",
+         age_2019 %in% c("10-14","15-19","20-24","25-29"),
+         sex=="Female")
+
+#service type disagg
+viz_service<- df_dreams_all %>% filter(indicator=="AGYW_PREV", 
+                                       standardizeddisaggregate %in% c("ComprehensiveEconomicStrengthening",
+                                                                       "EducationSupport"),
+                                       numeratordenom=="D")
+
+#create shares by USAID and non-USAID contributing DSNUs
+dreams_overall_val <- viz_package %>% 
+  mutate(usaid_dsnu = ifelse(str_detect(agencies_FY24, "USAID"), "USAID", "non-USAID")) %>% 
+  group_by(indicator, fiscal_year, usaid_dsnu) %>% 
+  summarize(across(cumulative, \(x) sum(x, na.rm = TRUE)),.groups="drop") %>% 
+  pivot_wider(names_from = "usaid_dsnu", values_from = 'cumulative') %>% 
+  mutate(total = USAID + `non-USAID`,
+         usaid_share = USAID/total) %>% 
+  pull(USAID) 
+
+dreams_overall_val_clean <- dreams_overall_val %>% 
+  clean_number(1)
+```
+
+```{r dreams_hrh}
+
+dreams_mentors <- df_hrh %>% 
+  filter(str_detect(employment_title, "DREAMS Mentor"),
+         funding_agency == "USAID",
+         fiscal_year == metadata$curr_fy) %>% 
+  group_by(fiscal_year, funding_agency, employment_title) %>% 
+  summarize(across(individual_count, \(x) sum(x, na.rm = TRUE)),.groups="drop") %>% 
+  pull(individual_count) 
+
+dreams_mentors_clean <- dreams_mentors %>% 
+  clean_number(1)
+```
+
+
+
+## Local Partner Talking Points
+
+```{r local_partner}
+
+hts_lp_value_clean <- grab_lp_results_clean(df_msd, "HTS_TST", "value")
+hts_lp_value <- grab_lp_results(df_msd, "HTS_TST", "value")
+
+txcurr_lp_value_clean <- grab_lp_results_clean(df_msd, "TX_CURR", "value")
+txcurr_lp_value <- grab_lp_results(df_msd, "TX_CURR", "value")
+txcurr_lp_share <- grab_lp_results(df_msd, "TX_CURR", "share")
+```
+
+
+
