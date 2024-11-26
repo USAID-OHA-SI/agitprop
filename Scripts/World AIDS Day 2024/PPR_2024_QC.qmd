@@ -1,18 +1,17 @@
 ---
-title: "PPR 2024"
+title: "PPR 2024 - QC"
 author: "Karishma Srikanth"
-format: html
+format: docx
 editor: visual
-execute:
-  echo: false
-  output: false
 ---
 
 # PPR 2024
 
 ```{r libraries}
-
-knitr::opts_chunk$set(echo = FALSE)
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
 
   library(tidyverse)
   library(glitr)
@@ -27,10 +26,16 @@ knitr::opts_chunk$set(echo = FALSE)
   library(janitor)
   library(lubridate)
   library(googlesheets4)
+  library(gt)
+  library(gtExtras)
 ```
 
 ```{r load}
-
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
+#| 
 # SI specific paths/functions  
 load_secrets()
 
@@ -112,6 +117,11 @@ df_tt <- mindthegap::pull_testtreat(TRUE)
 ```
 
 ```{r functions}
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
+
 # FUNCTIONS --------------------------------------------------------------------
 
 #clean number function
@@ -216,27 +226,34 @@ pull_kp <- function(df, indic) {
 
 ```
 
-## **1. Analysis of Mission Objective Performance:  (3,491/3,500)**
+# **1. Analysis of Mission Objective Performance:  (3,491/3,500)**
 
-### Epi Updates (Gina)
+## Epi Updates (Gina)
+
+### TP #1: Number of Countries USAID Supports, FY24
 
 ```{r usaid_cntry_count}
+#| warning: false
+#| message: false
 
-usaid_countries <- df_msd %>% 
+df_msd %>% 
   filter(fiscal_year == metadata$curr_fy,
          funding_agency == "USAID") %>% 
   count(country) %>% 
   nrow()
 ```
+### TP #2: Countries approachings 95s - UNAIDS
 
-```{r unaids_95}
+```{r unaids_95_tp}
+#| warning: false
+#| message: false
 
 unaids_yr <- df_tt %>% 
   filter(year == max(year)) %>% 
   pull(year) %>% unique()
 
-##Progress toward 90-90-90 
-    df_rel_lim <- df_tt %>% 
+##Progress toward 90-90-90 - how many countries have achieved the 90s as a proxy for close to 95s?
+  df_rel_lim <- df_tt %>% 
       filter(year == max(year),
              indicator %in% c("Percent Known Status of PLHIV",
                               "Percent on ART with Known Status",
@@ -245,66 +262,109 @@ unaids_yr <- df_tt %>%
              sex == "All") %>% 
       select(year, country, indicator, estimate, lower_bound, upper_bound, achv_95_relative, pepfar)
     
-    num_achv_90s <- df_rel_lim %>% 
+  num_achv_90s <- df_rel_lim %>% 
       filter(pepfar == TRUE) %>% 
       mutate(
         goal_rate = 90, #use 90 as the goal metric for each indicator
         achieved = estimate >= goal_rate) %>% 
        group_by(country) %>% 
         summarise(all_achieved = all(achieved), .groups = 'drop') %>% 
-        filter(all_achieved) %>% 
-        n_row()
-# 
-# achv_95_cntry <- df_tt %>% 
-#   filter(year == max(year),
-#          achv_95_plhiv == TRUE,
-#          achv_95_relative == TRUE,
-#        #  indicator == "Percent VLS on ART",
-#          age == "All",
-#          sex == "All") %>% 
-#   count(country) %>% 
-#   nrow()
+        filter(all_achieved) 
+
 ```
 
-In **`r metadata$curr_fy_lab`**, the Bureau for Global Health’s (GH) Office of HIV/AIDS (OHA) supported **`r usaid_countries`** host countries in successfully implementing PEPFAR-supported HIV prevention, care and treatment programs that are based on country context, epidemiology and leverage data from diverse sources to focus the response. GH continued to accelerate the global HIV response and contributed to achieving the UNAIDS 95-95-95 goals, where 95 percent of people living with HIV (PLHIV) know their status, 95 percent of people who know their HIV status are on antiretroviral therapy (ART), and 95 percent of people on ART are virally suppressed. In **`r unaids_yr`,** **`r num_achv_90s`** PEPFAR-supported countries were close to achieving the 95-95-95 targets.
+```{r unaids_95_qc}
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
+
+num_achv_90s %>% 
+  gt() %>% 
+   # fmt_number(columns = c(4), 
+   #           decimals = 0) %>% 
+  tab_header(
+    title = glue("TP #1: Countries close to achieving 95s in 2023" %>% toupper()),
+    subtitle = "UNAIDS 2024 Estimates") %>% 
+  gt_theme_nytimes() 
+
+```
 
 ### Program highlights along the clinical cascade and Primary Prevention (Gina)
 
-```{r}
+### TP #3: FY24 HTS_TST_POS and TX_CURR for USAID
 
-fy24_hts_pos <- df_msd %>% 
+```{r hts_txcurr_tp}
+#| warning: false
+#| message: false
+
+fy24_txcurr_htspos <- df_msd %>% 
   filter(funding_agency == "USAID",
          fiscal_year == metadata$curr_fy,
-         indicator == "HTS_TST_POS",
+         indicator %in% c("HTS_TST_POS", "TX_CURR"),
          standardizeddisaggregate == "Total Numerator") %>% 
   group_by(fiscal_year, funding_agency, indicator) %>% 
-  summarize(across(cumulative, \(x) sum(x, na.rm = TRUE)),.groups="drop")  %>% 
-  pull(cumulative)
-
-fy24_txcurr <- df_msd %>% 
-  filter(funding_agency == "USAID",
-         fiscal_year == metadata$curr_fy,
-         indicator == "TX_CURR",
-         standardizeddisaggregate == "Total Numerator") %>% 
-  group_by(fiscal_year, funding_agency, indicator) %>% 
-  summarize(across(cumulative, \(x) sum(x, na.rm = TRUE)),.groups="drop")  %>% 
-  pull(cumulative)
+  summarize(across(cumulative, \(x) sum(x, na.rm = TRUE)),.groups="drop")
 
 ```
 
-```{r ovc}
-ovc_serv_val <- df_msd %>% 
+```{r hts_txcurr_qc}
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
+
+fy24_txcurr_htspos %>% 
+  gt() %>% 
+   fmt_number(columns = c(4),
+             decimals = 0) %>% 
+  tab_header(
+    title = glue("TP #3: USAID FY24 HTS_TST_POS and TX_CURR" %>% toupper()),
+    subtitle = glue("{metadata$caption}")) %>% 
+  gt_theme_nytimes() 
+
+```
+
+### TP #5: OVC_SERV
+
+```{r ovc_tp}
+#| warning: false
+#| message: false
+
+ovc_serv_qc <- df_msd %>% 
   filter(indicator %in% c("OVC_SERV"),
          standardizeddisaggregate %in% c("Total Numerator"),
          #  trendscoarse == "<18",
          fiscal_year == metadata$curr_fy,
-         funding_agency == "USAID") %>% 
+         funding_agency == "USAID") %>%
+    group_by(fiscal_year, funding_agency, indicator) %>%
   summarise(across(starts_with("cumulative"), sum, na.rm = T)) %>% 
-  pull(cumulative)
+  ungroup()
 ```
 
-```{r dreams}
+```{r ovc_qc}
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
 
+ovc_serv_qc %>% 
+  gt() %>% 
+   fmt_number(columns = c(4),
+             decimals = 0) %>% 
+  tab_header(
+    title = glue("TP #5: USAID FY24 OVC_SERV" %>% toupper()),
+    subtitle = glue("{metadata$caption}")) %>% 
+  gt_theme_nytimes() 
+
+```
+
+### TP #6: AGYW_PREV for AGYW 10-29
+
+```{r dreams_tp}
+#| message: false
+#| warning: false
+#| 
 # DREAMS ----------------------------------------------------------
 
 #For total DREAMS programming, use all 4 disaggs + ages 10-29
@@ -318,27 +378,50 @@ viz_package <- df_dreams_all %>%
          age_2019 %in% c("10-14","15-19","20-24","25-29"),
          sex=="Female")
 
-#service type disagg
-viz_service<- df_dreams_all %>% filter(indicator=="AGYW_PREV", 
-                                       standardizeddisaggregate %in% c("ComprehensiveEconomicStrengthening",
-                                                                       "EducationSupport"),
-                                       numeratordenom=="D")
-
 #create shares by USAID and non-USAID contributing DSNUs
-dreams_overall_val <- viz_package %>% 
+dreams_overall_val_qc <- viz_package %>% 
   mutate(usaid_dsnu = ifelse(str_detect(agencies_FY24, "USAID"), "USAID", "non-USAID")) %>% 
   group_by(indicator, fiscal_year, usaid_dsnu) %>% 
   summarize(across(cumulative, \(x) sum(x, na.rm = TRUE)),.groups="drop") %>% 
   pivot_wider(names_from = "usaid_dsnu", values_from = 'cumulative') %>% 
-  mutate(total = USAID + `non-USAID`,
-         usaid_share = USAID/total) %>% 
-  pull(USAID) 
+  mutate(total = USAID + `non-USAID`) %>% 
+  pivot_longer(cols = c(3:4), names_to = "funding_agency") %>% 
+  mutate(share = value / total) %>% 
+  select(-c(total))
 
-dreams_overall_val_clean <- dreams_overall_val %>% 
-  clean_number(1)
 ```
 
-```{r kp}
+```{r dreams_qc}
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
+
+dreams_overall_val_qc %>% 
+  gt() %>% 
+  fmt_number(columns = c(4), 
+             decimals = 0) %>% 
+  fmt_percent(columns = c(5),
+              decimals = 0) %>% 
+  grand_summary_rows(
+    columns = where(is.numeric),
+    fns = list(
+      Overall = ~ sum(., na.rm = T)
+    ),
+    formatter = fmt_number,
+    decimals = 0
+  ) %>% 
+  tab_header(
+    title = glue("TP #6: USAID AGYW_PREV for Women 10-29" %>% toupper())) %>% 
+  gt_theme_nytimes() 
+
+```
+
+### TP #7: USAID KP_PREV and TX_CURR for KP
+
+```{r kp_tp}
+#| message: false
+#| warning: false
 
 fy24_kp_prev <- df_msd %>% 
   filter(indicator == "KP_PREV",
@@ -346,68 +429,161 @@ fy24_kp_prev <- df_msd %>%
          fiscal_year == metadata$curr_fy,
          funding_agency == "USAID") %>% 
   group_by(fiscal_year, funding_agency, indicator) %>% 
-    summarize(across(cumulative, \(x) sum(x, na.rm = TRUE)),.groups="drop")  %>% 
-  pull(cumulative)
+    summarize(across(cumulative, \(x) sum(x, na.rm = TRUE)),.groups="drop") 
 
-kp_txcurr <- pull_kp(df_msd, "TX_CURR")
+#kp_txcurr <- pull_kp(df_msd, "TX_CURR")
+
+kp_txcurr <- df_msd %>% 
+  filter(indicator == "TX_CURR",
+         str_detect(standardizeddisaggregate, "KeyPop"),
+         fiscal_year == metadata$curr_fy,
+         funding_agency == "USAID") %>% 
+  group_by(fiscal_year, funding_agency, indicator) %>% 
+    summarize(across(cumulative, \(x) sum(x, na.rm = TRUE)),.groups="drop") 
+
+df_kp_qc <- bind_rows(fy24_kp_prev, kp_txcurr)
 ```
 
-In **`r metadata$curr_fy_lab`**, USAID identified over **`r comma(fy24_hts_pos)`** people living with HIV (PLHIV) through facility and community-based HIV counseling and testing services and ensured more than **`r comma(fy24_txcurr)`** PLHIV received life-saving HIV treatment. GH investments have strengthened host country health systems that drive responsive, resilient, and enduring health care through more than ***10,000 HIV testing sites, more than 9,000 HIV treatment sites, and over 3,000 sites*** that provide lab-based or point-of-care testing, making critical services accessible in over ***50*** countries.
+```{r kp_qc}
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
 
-In **`r metadata$curr_fy_lab`**, USAID supported nearly **`r comma(ovc_serv_val)`** orphans and vulnerable children and their families affected by HIV through comprehensive services related to economic strengthening, education, and HIV care. USAID reached nearly **`r comma(dreams_overall_val)`** adolescent girls and young women, ages 10-29 years, with HIV prevention services. Additionally, USAID supported more than **`r comma(fy24_kp_prev)`** members of key populations at increased risk of HIV acquisition–with HIV prevention services and supportive interventions and more than **`r comma(kp_txcurr)`** key populations living with HIV with life-saving HIV medication.
+df_kp_qc %>% 
+  gt() %>% 
+  fmt_number(columns = c(4), 
+             decimals = 0) %>% 
+  # fmt_percent(columns = c(5),
+  #             decimals = 0) %>% 
+  # grand_summary_rows(
+  #   columns = where(is.numeric),
+  #   fns = list(
+  #     Overall = ~ sum(., na.rm = T)
+  #   ),
+  #   formatter = fmt_number,
+  #   decimals = 0
+  # ) %>% 
+  tab_header(
+    title = glue("TP #7: USAID KP_PREV and KP TX_CURR" %>% toupper())) %>% 
+  gt_theme_nytimes() 
+
+```
 
 ## Collaboration with UNAIDS, Global Fund, GHSD, WHO, and other multilateral and regional organizations, and PPPs to sustain the global HIV response., sustainable financing (Lisa, Bernadette, etc)
 
-```{r local_partner}
+### TP #8: USAID Local Partner Share of HTS_TST and TX_CURR
 
-hts_lp_value_clean <- grab_lp_results_clean(df_msd, "HTS_TST", "value")
-hts_lp_value <- grab_lp_results(df_msd, "HTS_TST", "value")
+```{r local_partner_tp}
+#| message: false
+#| warning: false
 
-txcurr_lp_value_clean <- grab_lp_results_clean(df_msd, "TX_CURR", "value")
-txcurr_lp_value <- grab_lp_results(df_msd, "TX_CURR", "value")
-txcurr_lp_share <- grab_lp_results(df_msd, "TX_CURR", "share")
+hts_tx_lp_qc <- df_msd %>% 
+  left_join(df_partner, by = c("mech_code")) %>%
+  filter(funding_agency == "USAID",
+         indicator %in% c("HTS_TST", "TX_CURR"),
+         standardizeddisaggregate == "Total Numerator") %>%
+  group_by(funding_agency, fiscal_year, indicator, partner_type) %>% 
+  summarise(across(cumulative, sum, na.rm = TRUE)) %>%
+  ungroup() %>% 
+  filter(!str_detect(partner_type, "TBD")) %>%
+  pivot_wider(names_from = partner_type, values_from = cumulative) %>%
+  group_by(fiscal_year) %>%
+  mutate(Total = International + Local)  %>%
+  ungroup() %>% 
+  pivot_longer(cols = International:Local, names_to = "partner_type") %>% 
+  mutate(share = value / Total) %>% 
+  filter(fiscal_year == metadata$curr_fy) %>% 
+  select(fiscal_year, funding_agency, indicator, partner_type, value, share)
 ```
 
-GH collaborated with several multilateral and regional partners, including UNAIDS, Global Fund, WHO, and the African Union as well as bilateral partners and the USG interagency, and additional multilateral and bilateral partners to advance local and regional leadership, galvanize host governments to reach national and global targets, and foster the sustainability of USAID HIV programming. In FY2023, USAID HIV programs funded 175 local partners, representing 58% (\$916 million) of USAID HIV mission programming (excluding supply chain funding). USAID-supported local partners helped more than **`r hts_lp_value_clean` \[`r comma(hts_lp_value)`\]** to learn their HIV status and provided nearly **`r txcurr_lp_value_clean` \[`r comma(txcurr_lp_value)`\]** people with life-saving HIV medication, reaching more than **`r txcurr_lp_share`** of all USAID-supported people on HIV treatment.
+```{r local_partner_qc}
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
+
+hts_tx_lp_qc %>% 
+  #filter(`OU category` != "Total") %>% 
+  gt::gt() %>% 
+  fmt_number(columns = c(5), 
+             decimals = 0) %>% 
+  fmt_percent(columns = c(6),
+              decimals = 0) %>% 
+  tab_header(
+    title = glue("TP #6: FY24 USAID Local Partner Share for HTS and TX_CURR" %>% toupper())) %>% 
+  gt_theme_nytimes() 
+```
+
 
 ## Innovation and prevention choice (Emily D & Vincent)
 
-```{r prevention}
+### TP #9: USAID PrEP_NEW and VMMC_CIRC
 
-prep_val <- df_msd %>%
+```{r prevention_tp}
+#| message: false
+#| warning: false
+
+prep_vmmc_val <- df_msd %>%
   filter(funding_agency == "USAID",
          standardizeddisaggregate %in% c("Total Numerator"),
-         indicator %in% c("PrEP_NEW"),
+         indicator %in% c("PrEP_NEW", "VMMC_CIRC"),
          fiscal_year == metadata$curr_fy) %>%
-  summarise(across(starts_with("cumulative"), sum, na.rm = T)) %>% 
-  pull(cumulative)
+  group_by(fiscal_year, funding_agency, indicator) %>% 
+  summarise(across(starts_with("cumulative"), sum, na.rm = T)) %>% ungroup()
 
-prep_val_clean <- prep_val %>%
-  clean_number(2)
+```
+```{r prevention_qc}
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
 
-vmmc_val <- df_msd %>%
-  filter(funding_agency == "USAID",
-         standardizeddisaggregate %in% c("Total Numerator"),
-         indicator %in% c("VMMC_CIRC"),
-         fiscal_year == metadata$curr_fy) %>%
-  summarise(across(starts_with("cumulative"), sum, na.rm = T)) %>% 
-  pull(cumulative)
-
-vmmc_val_clean <- vmmc_val %>%
-  clean_number(2)
+prep_vmmc_val %>% 
+  #filter(`OU category` != "Total") %>% 
+  gt::gt() %>% 
+  fmt_number(columns = c(4), 
+             decimals = 0) %>% 
+  # fmt_percent(columns = c(6),
+  #             decimals = 0) %>% 
+  tab_header(
+    title = glue("TP #9: FY24 USAID PrEP_NEW and VMMC_CIRC" %>% toupper())) %>% 
+  gt_theme_nytimes() 
 ```
 
-```{r prep_cab_la}
+### TP #10: USAID Rollout of Injectable PrEP
 
-prep_cab_la <- df_msd %>%
+```{r prep_cab_la_tp}
+#| warning: false
+#| message: false
+
+prep_cab_la_tp <- df_msd %>%
   filter(funding_agency == "USAID",
          standardizeddisaggregate %in% c("Type"),
-         otherdisaggregate == "PrEP Type - Injectable",
-         indicator %in% c("PrEP_NEW"),
+         str_detect(otherdisaggregate, "Injectable"),
+        # otherdisaggregate == "PrEP Type - Injectable",
+         indicator %in% c("PrEP_NEW", "PrEP_CT"),
          fiscal_year == metadata$curr_fy) %>% 
-group_by(fiscal_year, funding_agency, indicator, standardizeddisaggregate) %>% 
-summarise(across(starts_with("cumulative"), sum, na.rm = T)) %>% 
-pull(cumulative)
+group_by(fiscal_year, funding_agency, indicator, otherdisaggregate) %>% 
+summarise(across(starts_with("cumulative"), sum, na.rm = T)) %>% ungroup()
 ```
 
-In **`r metadata$curr_fy_lab`**, USAID initiated nearly **`r prep_val_clean` \[`r comma(prep_val)`\]** people on pre-exposure prophylaxis (PrEP), completed nearly over **`r vmmc_val_clean` \[`r comma(vmmc_val)`\]** voluntary medical male circumcisions, and procured and distributed over 287 million condoms and 32.8 million pieces of personal lubricants to persons at-risk, globally. USAID also supported key advances in long-acting HIV prevention technologies, rolling out the first-ever long-acting PrEP injectable, cabotegravir (CAB-LA), in programs in FY24. USAID supported **five** countries to begin implementation of CAB-LA, totalling nearly **`r prep_cab_la`** clients initiating PrEP using CAB-LA, with over ***2000*** additional clients continuing to use PrEP, with CAB-LA as their prevention method of choice. USAID will continue to scale CAB-LA programming, including launch in additional PEPFAR countries, and prepare for additional new prevention products currently in the pipeline client-centered implementation science and research .
+```{r prep_cab_la_qc}
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
+
+prep_cab_la_tp %>% 
+  #filter(`OU category` != "Total") %>% 
+  gt::gt() %>% 
+  fmt_number(columns = c(5), 
+             decimals = 0) %>% 
+  # fmt_percent(columns = c(6),
+  #             decimals = 0) %>% 
+  tab_header(
+    title = glue("TP #10: FY24 USAID PrEP_NEW/CT Injectable" %>% toupper())) %>% 
+  gt_theme_nytimes() 
+
+```
+
