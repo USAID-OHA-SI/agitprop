@@ -1,6 +1,6 @@
 ---
 title: "2024 WAD TPs - QC"
-format: html
+format: docx
 editor: visual
 ---
 
@@ -28,7 +28,7 @@ Purpose: The purpose of this document is to create one place for the data points
 #| warning: false
 #| message: false
 
-knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+#knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 
   library(tidyverse)
   library(glitr)
@@ -49,6 +49,10 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
 
 ```{r load}
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
 
 # SI specific paths/functions  
 load_secrets()
@@ -126,6 +130,11 @@ df_hrh <- si_path() %>%
 ```
 
 ```{r functions}
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
+
 # FUNCTIONS --------------------------------------------------------------------
 
 #clean number function
@@ -230,13 +239,11 @@ pull_kp <- function(df, indic) {
 
 ```
 
-### TP #1a: FY24 PrEP_NEW
+### TP #1: FY24 PrEP_NEW
 
 ```{r prep_tp}
-#| echo: false
-#| include: true
-#| warning: false
 #| message: false
+#| warning: false
 
 prep_val_qc <- df_msd %>%
   filter(funding_agency == "USAID",
@@ -264,20 +271,23 @@ prep_val_qc %>%
   gt_theme_nytimes() 
 ```
 
-### TP #1b: FY24 PrEP_NEW Countries
+### TP #1: FY24 PrEP_NEW Countries
 
 ```{r prep_country_tp}
-#| echo: false
-#| include: true
-#| warning: false
 #| message: false
+#| warning: false
 
 prep_country_qc <- df_msd %>% 
   filter(funding_agency == "USAID",
          standardizeddisaggregate %in% c("Total Numerator"),
          indicator %in% c("PrEP_NEW"),
          fiscal_year == metadata$curr_fy) %>%
-  distinct(fiscal_year, indicator, country)
+  distinct(fiscal_year, indicator, country) %>% 
+  select(country) %>%
+  mutate(id = row_number()) %>% 
+  mutate(country_new = glue::glue("{id}. {country}")) %>% 
+  select(country_new) %>%
+  pull() 
 
 ```
 
@@ -287,19 +297,15 @@ prep_country_qc <- df_msd %>%
 #| warning: false
 #| message: false
 
-prep_country_qc %>% 
-  select(country) %>%
-  mutate(id = row_number()) %>% 
-  gt() %>% 
-  tab_header(
-    title = glue("TP #1b: Number of USAID Countries reporting PrEP_NEW, FY24" %>% toupper())) %>% 
-  gt_theme_nytimes() 
+prep_country_qc
 ```
 
-```{r prep_lp_tp}
-#| echo: false
-#| include: true
+### TP #2: FY24 PrEP_NEW Local Partner Share
 
+```{r prep_lp_tp}
+#| message: false
+#| warning: false
+#| 
 prep_lp_qc <- df_msd %>% 
   left_join(df_partner, by = c("mech_code")) %>%
   filter(funding_agency == "USAID",
@@ -308,38 +314,53 @@ prep_lp_qc <- df_msd %>%
   group_by(funding_agency, fiscal_year, indicator, partner_type) %>% 
   summarise(across(cumulative, sum, na.rm = TRUE)) %>%
   ungroup() %>% 
-  filter(partner_type != "TBD") %>%
+  filter(!str_detect(partner_type, "TBD")) %>%
   pivot_wider(names_from = partner_type, values_from = cumulative) %>%
   group_by(fiscal_year) %>%
-  mutate(Total = International + Local,
-         share = Local / Total)  %>%
+  
+  mutate(Total = International + Local)  %>%
   ungroup() %>% 
-  pivot_longer(cols = International:Total, names_to = "partner_type") %>% 
-  filter(partner_type == "Local", fiscal_year == metadata$curr_fy) %>% 
-    select(fiscal_year, funding_agency, partner_type, indicator, value, share)
+  pivot_longer(cols = International:Local, names_to = "partner_type") %>% 
+  mutate(share = value / Total) %>% 
+  filter(fiscal_year == metadata$curr_fy) %>% 
+  select(fiscal_year, funding_agency, partner_type, indicator, value, share) 
   
 ```
 
-```{r prep_kp_tp}
+```{r prep_lp_tp_qc}
 #| echo: false
 #| include: true
+#| warning: false
+#| message: false
+
+prep_lp_qc %>% 
+  #filter(`OU category` != "Total") %>% 
+  gt::gt() %>% 
+  fmt_number(columns = c(5), 
+             decimals = 0) %>% 
+  fmt_percent(columns = c(6),
+              decimals = 0) %>% 
+  tab_header(
+    title = glue("TP #2: USAID Local Partner Share FY24" %>% toupper())) %>% 
+  gt_theme_nytimes() 
+```
+
+### TP #3: FY24 PrEP_NEW for KP and AGYW
+
+```{r prep_kp_agyw_tp}
+#| message: false
+#| warning: false
 
 kp_val_qc <- df_msd %>%
     filter(funding_agency == "USAID",
            str_detect(standardizeddisaggregate, "KeyPop(?!\\/Status)"),
            indicator %in% c("PrEP_NEW"),
            fiscal_year == metadata$curr_fy) %>%
-    count(indicator,fiscal_year,funding_agency, standardizeddisaggregate, wt = cumulative) %>%
+  mutate(group= "KP") %>% 
+    count(indicator,fiscal_year,funding_agency, group, wt = cumulative) %>%
     pivot_wider(names_from = indicator, values_from = "n") 
 
-```
 
-```{r prep_agyw_tp}
-#| echo: false
-#| include: true
-
-
-#AGYW prep
 prep_agyw_val_qc <- df_msd %>%
   filter(funding_agency == "USAID",
          standardizeddisaggregate %in% c("Age/Sex"),
@@ -347,19 +368,43 @@ prep_agyw_val_qc <- df_msd %>%
          fiscal_year == metadata$curr_fy,
          sex == "Female",
          age_2019 %in% c("10-14","15-19", "20-24")
-  ) %>%
-  group_by(fiscal_year, funding_agency, indicator) %>% 
+          ) %>%
+  mutate(group = "AGYW 10-24") %>% 
+  group_by(indicator, fiscal_year, funding_agency, group) %>% 
   summarise(across(starts_with("cumulative"), sum, na.rm = T)) %>% 
-  ungroup()
+  ungroup() %>% 
+  pivot_wider(names_from = indicator, values_from = "cumulative") 
+
+prep_pp_qc <- bind_rows(kp_val_qc, prep_agyw_val_qc)
+
+```
+
+```{r prep_kp_agyw_qc}
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
+
+prep_pp_qc %>% 
+   gt::gt() %>% 
+  fmt_number(columns = c(4), 
+             decimals = 0) %>% 
+  tab_header(
+    title = glue("TP #3: USAID KP and AGYW PrEP_NEW FY24" %>% toupper())) %>% 
+  gt_theme_nytimes() 
 
 ```
 
 
-
 ## DREAMS Talking Points
 
-```{r dreams}
+### TP #4: FY24 USAID AGYW_PREV for Women 10-29
 
+
+```{r dreams_tp}
+#| message: false
+#| warning: false
+#| 
 # DREAMS ----------------------------------------------------------
 
 #For total DREAMS programming, use all 4 disaggs + ages 10-29
@@ -380,46 +425,129 @@ viz_service<- df_dreams_all %>% filter(indicator=="AGYW_PREV",
                                        numeratordenom=="D")
 
 #create shares by USAID and non-USAID contributing DSNUs
-dreams_overall_val <- viz_package %>% 
+dreams_overall_val_qc <- viz_package %>% 
   mutate(usaid_dsnu = ifelse(str_detect(agencies_FY24, "USAID"), "USAID", "non-USAID")) %>% 
   group_by(indicator, fiscal_year, usaid_dsnu) %>% 
   summarize(across(cumulative, \(x) sum(x, na.rm = TRUE)),.groups="drop") %>% 
   pivot_wider(names_from = "usaid_dsnu", values_from = 'cumulative') %>% 
-  mutate(total = USAID + `non-USAID`,
-         usaid_share = USAID/total) %>% 
-  pull(USAID) 
+  mutate(total = USAID + `non-USAID`) %>% 
+  pivot_longer(cols = c(3:4), names_to = "funding_agency") %>% 
+  mutate(share = value / total) %>% 
+  select(-c(total))
 
-dreams_overall_val_clean <- dreams_overall_val %>% 
-  clean_number(1)
 ```
 
-```{r dreams_hrh}
+```{r dreams_qc}
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
 
-dreams_mentors <- df_hrh %>% 
+dreams_overall_val_qc %>% 
+  gt() %>% 
+  fmt_number(columns = c(4), 
+             decimals = 0) %>% 
+  fmt_percent(columns = c(5),
+              decimals = 0) %>% 
+  grand_summary_rows(
+    columns = where(is.numeric),
+    fns = list(
+      Overall = ~ sum(., na.rm = T)
+    ),
+    formatter = fmt_number,
+    decimals = 0
+  ) %>% 
+  tab_header(
+    title = glue("TP #4: USAID AGYW_PREV for Women 10-29" %>% toupper())) %>% 
+  gt_theme_nytimes() 
+
+```
+
+### TP #5: FY24 USAID DREAMS Mentors (HRH)
+
+```{r dreams_hrh_tp}
+#| message: false
+#| warning: false
+
+dreams_mentors_qc <- df_hrh %>% 
   filter(str_detect(employment_title, "DREAMS Mentor"),
          funding_agency == "USAID",
          fiscal_year == metadata$curr_fy) %>% 
   group_by(fiscal_year, funding_agency, employment_title) %>% 
-  summarize(across(individual_count, \(x) sum(x, na.rm = TRUE)),.groups="drop") %>% 
-  pull(individual_count) 
+  summarize(across(individual_count, \(x) sum(x, na.rm = TRUE)),.groups="drop") 
 
-dreams_mentors_clean <- dreams_mentors %>% 
-  clean_number(1)
 ```
 
+```{r dreams_hrh_qc}
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
 
+
+dreams_mentors_qc %>% 
+  gt() %>% 
+  fmt_number(columns = c(4), 
+             decimals = 0) %>% 
+  # fmt_percent(columns = c(5),
+  #             decimals = 0) %>% 
+  # grand_summary_rows(
+  #   columns = where(is.numeric),
+  #   fns = list(
+  #     Overall = ~ sum(., na.rm = T)
+  #   ),
+  #   formatter = fmt_number,
+  #   decimals = 0
+  # ) %>% 
+  tab_header(
+    title = glue("TP #5: FY24 USAID DREAMS Mentors" %>% toupper()),
+    subtitle = "Source: FY24Q4i HRH Dataset") %>% 
+  gt_theme_nytimes() 
+```
 
 ## Local Partner Talking Points
 
-```{r local_partner}
+### TP #5: FY24 USAID Local Partner Share for HTS and TX_CURR
 
-hts_lp_value_clean <- grab_lp_results_clean(df_msd, "HTS_TST", "value")
-hts_lp_value <- grab_lp_results(df_msd, "HTS_TST", "value")
 
-txcurr_lp_value_clean <- grab_lp_results_clean(df_msd, "TX_CURR", "value")
-txcurr_lp_value <- grab_lp_results(df_msd, "TX_CURR", "value")
-txcurr_lp_share <- grab_lp_results(df_msd, "TX_CURR", "share")
+```{r local_partner_tp}
+#| message: false
+#| warning: false
+
+hts_tx_lp_qc <- df_msd %>% 
+  left_join(df_partner, by = c("mech_code")) %>%
+  filter(funding_agency == "USAID",
+         indicator %in% c("HTS_TST", "TX_CURR"),
+         standardizeddisaggregate == "Total Numerator") %>%
+  group_by(funding_agency, fiscal_year, indicator, partner_type) %>% 
+  summarise(across(cumulative, sum, na.rm = TRUE)) %>%
+  ungroup() %>% 
+  filter(!str_detect(partner_type, "TBD")) %>%
+  pivot_wider(names_from = partner_type, values_from = cumulative) %>%
+  group_by(fiscal_year) %>%
+  mutate(Total = International + Local)  %>%
+  ungroup() %>% 
+  pivot_longer(cols = International:Local, names_to = "partner_type") %>% 
+  mutate(share = value / Total) %>% 
+  filter(fiscal_year == metadata$curr_fy) %>% 
+  select(fiscal_year, funding_agency, indicator, partner_type, value, share)
 ```
 
+```{r local_partner_qc}
+#| echo: false
+#| include: true
+#| warning: false
+#| message: false
 
+hts_tx_lp_qc %>% 
+  #filter(`OU category` != "Total") %>% 
+  gt::gt() %>% 
+  fmt_number(columns = c(5), 
+             decimals = 0) %>% 
+  fmt_percent(columns = c(6),
+              decimals = 0) %>% 
+  tab_header(
+    title = glue("TP #6: FY24 USAID Local Partner Share for HTS and TX_CURR" %>% toupper())) %>% 
+  gt_theme_nytimes() 
+```
 
