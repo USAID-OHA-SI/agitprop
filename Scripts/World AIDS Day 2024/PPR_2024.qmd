@@ -275,7 +275,16 @@ In **`r metadata$curr_fy_lab`**, the Bureau for Global Health’s (GH) Office of
 fy24_hts_pos <- df_msd %>% 
   filter(funding_agency == "USAID",
          fiscal_year == metadata$curr_fy,
-         indicator == "HTS_TST_POS",
+         indicator %in% c("HTS_TST_POS"),
+         standardizeddisaggregate == "Total Numerator") %>% 
+  group_by(fiscal_year, funding_agency, indicator) %>% 
+  summarize(across(cumulative, \(x) sum(x, na.rm = TRUE)),.groups="drop")  %>% 
+  pull(cumulative)
+
+fy24_hts_self <- df_msd %>% 
+  filter(funding_agency == "USAID",
+         fiscal_year == metadata$curr_fy,
+         indicator %in% c("HTS_SELF"),
          standardizeddisaggregate == "Total Numerator") %>% 
   group_by(fiscal_year, funding_agency, indicator) %>% 
   summarize(across(cumulative, \(x) sum(x, na.rm = TRUE)),.groups="drop")  %>% 
@@ -352,9 +361,43 @@ fy24_kp_prev <- df_msd %>%
 kp_txcurr <- pull_kp(df_msd, "TX_CURR")
 ```
 
-In **`r metadata$curr_fy_lab`**, USAID identified over **`r comma(fy24_hts_pos)`** people living with HIV (PLHIV) through facility and community-based HIV counseling and testing services and ensured more than **`r comma(fy24_txcurr)`** PLHIV received life-saving HIV treatment. GH investments have strengthened host country health systems that drive responsive, resilient, and enduring health care through more than ***10,000 HIV testing sites, more than 9,000 HIV treatment sites, and over 3,000 sites*** that provide lab-based or point-of-care testing, making critical services accessible in over ***50*** countries.
+In **`r metadata$curr_fy_lab`**, USAID distributed **`r comma(fy24_hts_self)`** self-test kits, identified over **`r comma(fy24_hts_pos)`** people living with HIV (PLHIV) through facility and community-based HIV counseling and testing services and ensured more than **`r comma(fy24_txcurr)`** PLHIV received life-saving HIV treatment. GH investments have strengthened host country health systems that drive responsive, resilient, and enduring health care through more than ***10,000 HIV testing sites, more than 9,000 HIV treatment sites, and over 3,000 sites*** that provide lab-based or point-of-care testing, making critical services accessible in over ***50*** countries.
 
 In **`r metadata$curr_fy_lab`**, USAID supported nearly **`r comma(ovc_serv_val)`** orphans and vulnerable children and their families affected by HIV through comprehensive services related to economic strengthening, education, and HIV care. USAID reached nearly **`r comma(dreams_overall_val)`** adolescent girls and young women, ages 10-29 years, with HIV prevention services. Additionally, USAID supported more than **`r comma(fy24_kp_prev)`** members of key populations at increased risk of HIV acquisition–with HIV prevention services and supportive interventions and more than **`r comma(kp_txcurr)`** key populations living with HIV with life-saving HIV medication.
+
+## Collaborations - Health Workforce and healthcare worker mental health (Diana F)
+
+```{r hrh_total}
+
+
+hrh_tp <- df_hrh %>% 
+  filter(funding_agency == "USAID",
+         #str_detect(er_category, "HCW"),
+         fiscal_year == metadata$curr_fy) %>% 
+  group_by(fiscal_year, funding_agency, er_category) %>% 
+  summarize(across(individual_count, \(x) sum(x, na.rm = TRUE)),.groups="drop") %>% 
+  pivot_wider(names_from = er_category, values_from = individual_count) %>% 
+  mutate(total = `HCW: Ancillary`+`HCW: Clinical`+`Implementing Mechanism Program Management Staff`+`Other Staff`,
+         HCW = `HCW: Ancillary`+`HCW: Clinical`) %>% 
+  select(-c(3:4)) %>% 
+  pivot_longer(cols = c(3:4, 6), names_to = 'er_category') %>% 
+  mutate(share = value / total) %>% 
+  select(fiscal_year, funding_agency, er_category, value, total, share) %>% 
+  arrange(desc(share))
+
+total_hrh <- hrh_tp %>% 
+  pull(total) %>% unique()
+
+hcw_share <- hrh_tp %>% 
+  filter(er_category == "HCW") %>% 
+  pull(share)
+
+hcw_value <- hrh_tp %>% 
+  filter(er_category == "HCW") %>% 
+  pull(value)
+```
+
+In **`r metadata$curr_fy_lab`**, USAID supported over **`r comma(total_hrh)`** staff, of whom over **`r scales::percent(hcw_share)`** **`r (comma(hcw_value))`** were health workers directly delivering high-quality services required for HIV programs.
 
 ## Collaboration with UNAIDS, Global Fund, GHSD, WHO, and other multilateral and regional organizations, and PPPs to sustain the global HIV response., sustainable financing (Lisa, Bernadette, etc)
 
