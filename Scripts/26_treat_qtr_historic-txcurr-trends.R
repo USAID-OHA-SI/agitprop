@@ -3,7 +3,7 @@
 # PURPOSE:  treatment scale up since PEPFAR start
 # LICENSE:  MIT
 # DATE:     2021-11-30
-# UPDATED:  2022-4-14
+# UPDATED:  2024-12-09
 # NOTE:     adapted from agitprop/04a_usaid_tx_trends.R
 
 # DEPENDENCIES ------------------------------------------------------------
@@ -23,41 +23,49 @@
 
 
 # GLOBAL VARIABLES --------------------------------------------------------
-  setwd("~/GitHub/agitprop")
+  #setwd("~/GitHub/agitprop")
   authors <- c("Aaron Chafetz", "Tim Essam", "Karishma Srikanth")
+  
+ metadata <-  si_path() %>% 
+    return_latest("OU_IM_FY22") %>% 
+    get_metadata()
   
 
 # IMPORT ------------------------------------------------------------------
   
+  # lets ignore the very old historic results and focus on FY15 to present
+  
   #Source: PEPFAR Spotlight (public)
-  df_hist <- read_csv("Data/Country and Regional Targets_Results 2004-2016.csv",
-                      na = c("", "NA", "null"),
-                      col_types = c(Year = "i",
-                                    `Measure Value` = "d",
-                                    .default = "c")) %>% 
-    clean_names()
+  # df_hist <- read_csv("Data/Country and Regional Targets_Results 2004-2016.csv",
+  #                     na = c("", "NA", "null"),
+  #                     col_types = c(Year = "i",
+  #                                   `Measure Value` = "d",
+  #                                   .default = "c")) %>% 
+  #   clean_names()
   
   #Current MSD
-    MSD_name <- si_path() %>% 
-    return_latest("OU_IM_FY20") 
-    df<- MSD_name %>% read_msd()
+    df_msd <- si_path() %>% 
+    return_latest("OU_IM_FY22") %>% 
+    read_psd()
+    
+    
   
-  #Archived MSD
+  #Archived MSD - download historic FY15 MSD from Pano
   df_arch <- si_path() %>% 
     return_latest("OU_IM_FY15") %>% 
-    read_msd()
+    read_psd()
 
 # MUNGE -------------------------------------------------------------------
 
-  #source info
-  msd_source <- source_info()
-  
-  #identify periods for plot
-  curr_pd <- source_info(return = "period")
-  curr_qtr <- source_info(return = "quarter")
+  # #source info
+  # msd_source <- source_info()
+  # 
+  # #identify periods for plot
+  # curr_pd <- source_info(return = "period")
+  # curr_qtr <- source_info(return = "quarter")
   
   #append archive MSD to current version
-  df_tx <- df %>% 
+  df_tx <- df_msd %>% 
     bind_rows(df_arch) 
   
   #create a PEPFAR duplicate and aggregate up to country/global level
@@ -71,30 +79,30 @@
     filter(funding_agency %in% c("PEPFAR", "USAID"),
            value != 0) %>% 
     arrange(indicator, funding_agency, fiscal_year) %>% 
-    mutate(source = "MSD")
+    mutate(source = metadata$source)
 
   #limit the historic data for TX_CURR/NEW data and aggregate
-  df_hist_clean <- df_hist %>% 
-    filter(indicator_short_name %in% c("Patients Currently Receiving ART",
-                                       "Patients Newly Receiving ART"),
-           measure_name == "Results",
-           country_region != "Global",
-           dsd_ta == "DSD+TA") %>% 
-    group_by(fiscal_year = year, indicator = indicator_short_name) %>% 
-    summarise(value = sum(measure_value, na.rm = TRUE)) %>% 
-    ungroup()
+  # df_hist_clean <- df_hist %>% 
+  #   filter(indicator_short_name %in% c("Patients Currently Receiving ART",
+  #                                      "Patients Newly Receiving ART"),
+  #          measure_name == "Results",
+  #          country_region != "Global",
+  #          dsd_ta == "DSD+TA") %>% 
+  #   group_by(fiscal_year = year, indicator = indicator_short_name) %>% 
+  #   summarise(value = sum(measure_value, na.rm = TRUE)) %>% 
+  #   ungroup()
 
   #clean align names and remove any overlapping years
-  df_hist_clean <- df_hist_clean %>% 
-    mutate(indicator = recode(indicator,
-                              "Patients Currently Receiving ART" = "TX_CURR",
-                              "Patients Newly Receiving ART" = "TX_NEW"),
-           funding_agency = "PEPFAR",
-           source = "Spotlight") %>% 
-    filter(!fiscal_year %in% unique(df_tx$fiscal_year))
+  # df_hist_clean <- df_hist_clean %>% 
+  #   mutate(indicator = recode(indicator,
+  #                             "Patients Currently Receiving ART" = "TX_CURR",
+  #                             "Patients Newly Receiving ART" = "TX_NEW"),
+  #          funding_agency = "PEPFAR",
+  #          source = "Spotlight") %>% 
+  #   filter(!fiscal_year %in% unique(df_tx$fiscal_year))
   
   #combine historic data to MSD
-  df_tx <- bind_rows(df_hist_clean, df_tx)
+  #df_tx <- bind_rows(df_hist_clean, df_tx)
 
   #adjust for viz
   df_tx_viz <- df_tx %>% 
