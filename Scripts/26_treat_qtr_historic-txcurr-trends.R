@@ -106,7 +106,7 @@
 
   #adjust for viz
   df_tx_viz <- df_tx %>% 
-    mutate(bar_alpha = ifelse(fiscal_year == max(fiscal_year) & curr_qtr != 4, .6, 1),
+    mutate(bar_alpha = ifelse(fiscal_year == max(fiscal_year) & metadata$curr_qtr != 4, .6, 1),
            ind_label = case_when(indicator == "TX_CURR" ~ "Currently receiving antiretroviral therapy",
                                  TRUE ~ "Newly enrolled on antiretroviral therapy"))
   #add usaid share
@@ -143,12 +143,12 @@
     coord_cartesian(clip = "off") +
     labs(x = NULL, y = NULL, fill = NULL,
          title = "PEPFAR HAS VASTLY SCALED UP LIFE SAVING ART IN THE LAST 15+ YEARS",
-         subtitle = glue("As of {curr_pd}, USAID provided treatment to \\
+         subtitle = glue("As of {metadata$curr_pd}, USAID provided treatment to \\
                           {percent(df_curr_val$usaid_share, 1)} \\
                           of PEPFAR's \\
                           {number(df_curr_val$PEPFAR, .1, scale = 1e-6)} million \\
                           patients living with HIV."),
-         caption = glue("Source: Spotlight FY04-14, {msd_source} (including FY15-18)
+         caption = glue("Source: Spotlight FY04-14, {metadata$msd_source} (including FY15-18)
                         SI analytics: {paste(authors, collapse = '/')}
                      US Agency for International Development")) +
     si_style_nolines() +
@@ -185,8 +185,8 @@
   #si_save("Graphics/26_treat_qtr_historic-txcurr-trends-4-22.svg")
   
 
-  init_or_clean<-ifelse(str_detect(MSD_name, "v1"), "i",
-                    ifelse(str_detect(MSD_name, "v2"), "c", "error"))
+  init_or_clean<-ifelse(str_detect(metadata$MSD_name, "v1"), "i",
+                    ifelse(str_detect(metadata$MSD_name, "v2"), "c", "error"))
   
 #  glue("Images/26_treat_qtr_historic-txcurr-trends-no-percent_{curr_pd}{init_or_clean}") %>%
 #  si_save()
@@ -201,7 +201,7 @@
               family = "Source Sans Pro", color = moody_blue, vjust = -.8)
   
   #si_save("Graphics/27_treat_qtr_historic-txcurr-trends-share-4-22.svg")
-  glue("Images/26_treat_qtr_historic-txcurr-trends_{curr_pd}{init_or_clean}") %>%
+  glue("Images/26_treat_qtr_historic-txcurr-trends_{metadata$curr_pd}{init_or_clean}") %>%
     si_save()
   
   
