@@ -298,10 +298,10 @@ num_achv_90s %>%
 #| warning: false
 #| message: false
 
-fy24_txcurr_htspos <- df_msd %>% 
+fy24_txcurr_htspos_self <- df_msd %>% 
   filter(funding_agency == "USAID",
          fiscal_year == metadata$curr_fy,
-         indicator %in% c("HTS_TST_POS", "TX_CURR"),
+         indicator %in% c("HTS_TST_POS", "TX_CURR", "HTS_SELF"),
          standardizeddisaggregate == "Total Numerator") %>% 
   group_by(fiscal_year, funding_agency, indicator) %>% 
   summarize(across(cumulative, \(x) sum(x, na.rm = TRUE)),.groups="drop")
@@ -470,6 +470,54 @@ df_kp_qc %>%
 
 ```
 
+
+## Collaborations - Health Workforce and healthcare worker mental health (Diana F)
+
+### TP: HRH
+
+```{r hrh_total_tp}
+#| message: false
+#| warning: false
+
+hrh_tp <- df_hrh %>% 
+  filter(funding_agency == "USAID",
+         #str_detect(er_category, "HCW"),
+         fiscal_year == metadata$curr_fy) %>% 
+  group_by(fiscal_year, funding_agency, er_category) %>% 
+  summarize(across(individual_count, \(x) sum(x, na.rm = TRUE)),.groups="drop") %>% 
+  pivot_wider(names_from = er_category, values_from = individual_count) %>% 
+  mutate(total = `HCW: Ancillary`+`HCW: Clinical`+`Implementing Mechanism Program Management Staff`+`Other Staff`,
+         HCW = `HCW: Ancillary`+`HCW: Clinical`) %>% 
+  select(-c(3:4)) %>% 
+  pivot_longer(cols = c(3:4, 6), names_to = 'er_category') %>% 
+  mutate(share = value / total) %>% 
+  select(fiscal_year, funding_agency, er_category, value, total, share) %>% 
+  arrange(desc(share))
+```
+
+
+```{r hrh_total_qc}
+
+hrh_tp %>% 
+  mutate(fiscal_year = as.character(fiscal_year)) %>%
+  select(-total) %>% 
+  gt() %>% 
+  fmt_number(columns = c(4), 
+             decimals = 0) %>% 
+  fmt_percent(columns = c(5),
+              decimals = 0) %>%
+  grand_summary_rows(
+    columns = where(is.numeric),
+    fns = list(
+      Overall = ~ sum(., na.rm = T)
+    ),
+    formatter = fmt_number,
+    decimals = 0
+  ) %>%
+  tab_header(
+    title = glue("HRH: Total HCW FY24" %>% toupper())) %>% 
+  gt_theme_nytimes() 
+```
 ## Collaboration with UNAIDS, Global Fund, GHSD, WHO, and other multilateral and regional organizations, and PPPs to sustain the global HIV response., sustainable financing (Lisa, Bernadette, etc)
 
 ### TP #8: USAID Local Partner Share of HTS_TST and TX_CURR
