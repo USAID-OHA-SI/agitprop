@@ -63,8 +63,8 @@
     bind_rows(df_arch) 
   
   #exclude Nigeria due to 2023 data issue
-  df_tx<-df_tx %>% 
-    filter(operatingunit!="Nigeria")
+  # df_tx<-df_tx %>% 
+  #   filter(operatingunit!="Nigeria")
   
   #create a PEPFAR duplicate and aggregate up to country/global level
   df_tx <- df_tx %>%
@@ -83,7 +83,7 @@
 
   # limit the historic data for TX_CURR/NEW data and aggregate
   df_hist_clean <- df_hist %>%
-    filter(country_region!="Nigeria") %>% 
+    # filter(country_region!="Nigeria") %>% 
     filter(indicator_short_name %in% c("Patients Currently Receiving ART",
                                        "Patients Newly Receiving ART"),
            measure_name == "Results",
@@ -155,7 +155,7 @@
                           {number(df_curr_val$PEPFAR, .1, scale = 1e-6)} million \\
                           patients living with HIV."),
          caption = glue("Source: Spotlight FY04-14, {metadata$source} (including FY15-18)
-                        Note: Excludes Nigeria due to data quality issues in FY23Q4")) +
+                        Note: Excludes Nigeria in FY23 due to data quality issues" ))+
     si_style_nolines() +
     theme(legend.position = "none")
 
@@ -186,7 +186,7 @@
                            type = "closed"),
              curvature = .4,
              color = "white")
-  
+
   #si_save("Graphics/26_treat_qtr_historic-txcurr-trends-4-22.svg")
   
 
@@ -207,7 +207,7 @@
 
   
   #si_save("Graphics/27_treat_qtr_historic-txcurr-trends-share-4-22.svg")
-  glue("Images/26_treat_qtr_historic-txcurr-trends_{metadata$curr_pd}{init_or_clean}") %>%
+  glue("Images/26_treat_qtr_historic-txcurr-trends_nigeria_{metadata$curr_pd}{init_or_clean}") %>%
     si_save()
 
   
