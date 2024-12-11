@@ -29,6 +29,8 @@
  metadata <-  si_path() %>% 
     return_latest("OU_IM_FY22") %>% 
     get_metadata()
+ 
+ data_folder <- "Data"
   
 
 # IMPORT ------------------------------------------------------------------
@@ -36,9 +38,9 @@
   # lets ignore the very old historic results and focus on FY15 to present
   
   # Source: PEPFAR Spotlight (public)
-  df_hist <- 
-   read_csv("C:/Users/jstephens/Documents/MSD/Country and Regional Targets_Results 2004-2016.csv",
-                      na = c("", "NA", "null"),
+  df_hist <- data_folder %>% 
+   return_latest("Country and Regional Targets") %>% 
+   read_csv(na = c("", "NA", "null"),
                       col_types = c(Year = "i",
                                     `Measure Value` = "d",
                                     .default = "c")) %>%
@@ -130,14 +132,17 @@
 # VIZ ---------------------------------------------------------------------
 
   v <- df_tx_viz %>% 
-    filter(indicator == "TX_CURR") %>% 
+    filter(indicator == "TX_CURR",
+           funding_agency == "PEPFAR") %>% 
     ggplot(aes(fiscal_year, value)) +
     geom_col(aes(alpha = bar_alpha, fill = fct_rev(funding_agency)),
              position = "identity") +
     # geom_hline(yintercept = seq(3e6, 18e6, 3e6), color = "white") +
     scale_y_continuous(labels = unit_format(1, unit = "M", scale = 1e-6),
-                       breaks =  seq(3e6, 18e6, 3e6),
+                       breaks =  seq(3e6, 3e7, 3e6),
                        position = "right", expand = c(.005, .005)) +
+    geom_text(aes(label = clean_number(value)), na.rm = TRUE,
+              family = "Source Sans Pro", color = trolley_grey, vjust = -1) +
     # scale_x_continuous(expand = c(.005, .005))+
     scale_x_continuous(
       breaks = seq(2002, 2024, by = 2),    # Show labels for every 2 years
@@ -148,11 +153,9 @@
     scale_alpha_identity() +
     coord_cartesian(clip = "off") +
     labs(x = NULL, y = NULL, fill = NULL,
-         title = "USAID/PEPFAR HAS VASTLY SCALED UP LIFE SAVING ART IN THE LAST 15+ YEARS",
-         subtitle = glue("As of {metadata$curr_pd}, USAID provided treatment to \\
-                          {percent(df_curr_val$usaid_share, 1)} \\
-                          of PEPFAR's \\
-                          {number(df_curr_val$PEPFAR, .1, scale = 1e-6)} million \\
+         title = "PEPFAR HAS VASTLY SCALED UP LIFE SAVING ART IN THE LAST 15+ YEARS",
+         subtitle = glue("As of {metadata$curr_pd}, PEPFAR provided treatment to almost \\
+                          {number(df_curr_val$PEPFAR, scale = 1e-6)} million \\
                           patients living with HIV."),
          caption = glue("Source: Spotlight FY04-14, {metadata$source} (including FY15-18)
                         Note: Excludes Nigeria in FY23 due to data quality issues" ))+
@@ -160,10 +163,10 @@
     theme(legend.position = "none")
 
   v_ann <- v +
-    annotate("text",
-             x = 2014.2, y = 8.9e6, family = "Source Sans Pro",
-             hjust = "right", size = 9/.pt, color = matterhorn,
-             label = "No agency attribution\n of results before 2015") +
+    # annotate("text",
+    #          x = 2014.2, y = 8.9e6, family = "Source Sans Pro",
+    #          hjust = "right", size = 9/.pt, color = matterhorn,
+    #          label = "No agency attribution\n of results before 2015") +
     annotate("text",
              x = 2018.5, y = 17e6, family = "Source Sans Pro",
              hjust = "left",
@@ -174,18 +177,19 @@
              arrow = arrow(length = unit(0.05, "inches"),
                            type = "closed"),
              curvature = .4,
-             color = suva_grey) +
-    annotate("text",
-             x = 2019.9, y = -1e6, family = "Source Sans Pro",
-             hjust = "right",
-             color = matterhorn, size = 10/.pt,
-             label = "USAID") +
-    annotate("curve",
-             x = 2019.4, y = -1e6, xend = 2019, yend = 1e6,
-             arrow = arrow(length = unit(0.05, "inches"),
-                           type = "closed"),
-             curvature = .4,
-             color = "white")
+             color = suva_grey)
+  #+
+    # annotate("text",
+    #          x = 2019.9, y = -1e6, family = "Source Sans Pro",
+    #          hjust = "right",
+    #          color = matterhorn, size = 10/.pt,
+    #          label = "USAID") +
+    # annotate("curve",
+    #          x = 2019.4, y = -1e6, xend = 2019, yend = 1e6,
+    #          arrow = arrow(length = unit(0.05, "inches"),
+    #                        type = "closed"),
+    #          curvature = .4,
+    #          color = "white")
 
   #si_save("Graphics/26_treat_qtr_historic-txcurr-trends-4-22.svg")
   
@@ -207,7 +211,7 @@
 
   
   #si_save("Graphics/27_treat_qtr_historic-txcurr-trends-share-4-22.svg")
-  glue("Images/26_treat_qtr_historic-txcurr-trends_nigeria_{metadata$curr_pd}{init_or_clean}") %>%
+  glue("Images/26_treat_qtr_historic-txcurr-trends_nigeria_{metadata$curr_pd}_PEPFAR") %>%
     si_save()
 
   
